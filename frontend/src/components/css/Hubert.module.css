@@ -1,0 +1,328 @@
+.hubertButton {
+  width: 100%;
+  height: 100%;
+  padding: 22px;
+
+  display: flex;
+  flex-direction: column;
+
+  background: var(--surface);
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.hubertButton:hover {
+  border-color: var(--primary);
+  background-color: rgba(21, 150, 255, 0.082);
+}
+
+.hubertTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.hubertContent {
+  flex: 1;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hubertIcon {
+  width: 140px;
+  height: 140px;
+  object-fit: contain;
+
+  transition: 0.2s ease;
+}
+
+.hubertIcon:hover {
+  transform: scale(1.05);
+}
+
+.hubertIcon:active {
+  transform: scale(1);
+}
+
+.talkingBoxHubert {
+  background-color: var(--background);
+  padding: 8px;
+  border-radius: 10px 10px 10px 0;
+  color: var(--text-secondary);
+}
+
+.hubertOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+.hubertWindow {
+  position: relative;
+
+  width: 100%;
+  max-width: 580px;
+  height: 750px;
+
+  display: flex;
+  flex-direction: column;
+
+  background-color: var(--surface);
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+
+  animation: hubertPopup 0.3s ease-out;
+}
+
+.closeButton {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+
+  padding: 0;
+
+  background: transparent;
+  border: none;
+
+  color: var(--text-secondary);
+  font-size: 26px;
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  color: var(--text);
+}
+
+.windowHeader {
+  padding: 20px;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  border-bottom: 1px solid var(--border);
+}
+
+.windowHubertIcon {
+  width: 65px;
+  height: 65px;
+}
+
+.windowHubertIcon {
+  width: 55px;
+  height: 55px;
+  object-fit: contain;
+
+  transition: transform 0.5s ease;
+}
+
+.windowHeader p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.chatAndSendWrapper {
+  flex: 1;
+  min-height: 0;
+  padding: 20px;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.chatArea {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.windowClosing {
+  animation: hubertPopupClose 0.2s ease-in forwards;
+}
+
+.overlayClosing {
+  animation: overlayFadeOut 0.2s ease-in forwards;
+}
+
+.chatInputWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.chatInput {
+  width: 100%;
+  min-height: 55px;
+  max-height: 120px;
+
+  padding: 16px 60px 16px 16px;
+
+  resize: none;
+  overflow-y: hidden;
+
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 20px;
+
+  outline: none;
+  box-sizing: border-box;
+}
+
+.chatInput:focus {
+  border-color: var(--primary);
+}
+
+.chatInput::placeholder {
+  color: var(--text-secondary);
+}
+
+.sendButton {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  background: var(--primary);
+  border: none;
+  border-radius: 50%;
+
+  color: white;
+  font-size: 20px;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.sendButton:hover {
+  background-color: var(--primary-hover);
+  color: var(--text);
+}
+
+.sendButton:active {
+  background-color: rgba(21, 150, 255, 0.075);
+}
+
+@media (max-width: 1000px) {
+  .hubertTitle {
+    font-size: 13px;
+  }
+
+  .hubertIcon {
+    width: 120px;
+    height: 120px;
+  }
+
+  .hubertTitle {
+    font-size: 13px;
+  }
+
+  .hubertIcon {
+    width: 120px;
+    height: 120px;
+  }
+
+  .hubertWindow {
+    max-width: 520px;
+    height: 680px;
+  }
+}
+
+@media (max-width: 600px) {
+  .hubertTitle {
+    font-size: 12px;
+  }
+
+  .hubertIcon {
+    width: 100px;
+    height: 100px;
+  }
+
+  .hubertOverlay {
+    padding: 20px;
+  }
+
+  .hubertWindow {
+    width: 90%;
+    max-width: 420px;
+    height: 75dvh;
+    max-height: 650px;
+
+    border-radius: 8px;
+  }
+
+  .windowHeader {
+    padding: 16px;
+  }
+
+  .windowHubertIcon {
+    width: 50px;
+    height: 50px;
+  }
+
+  .chatArea {
+    padding: 16px;
+  }
+}
+
+@keyframes hubertPopup {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes hubertPopupClose {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+}
+
+@keyframes overlayFadeOut {
+  from {
+    background-color: rgba(0, 0, 0, 0.6);
+  }
+
+  to {
+    background-color: rgba(0, 0, 0, 0);
+  }
+}

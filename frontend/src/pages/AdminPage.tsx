@@ -5,6 +5,7 @@ import UserList from "../components/UserList";
 import AdminBookings from "../components/AdminBookings";
 import ResourceStatus from "../components/ResourceStatus";
 import RegisterUser from "../components/RegisterUser";
+import Hubert from "../components/Hubert";
 
 export default function LandingPage() {
   const [showRegister, setShowRegister] = useState(false);
@@ -17,16 +18,28 @@ export default function LandingPage() {
           <RegisterUser onBack={() => setShowRegister(false)} />
         ) : (
           <>
-            <button className={styles.registerButton} type="button" onClick={() => setShowRegister(true)}>
-              Registrera användare
-            </button>
+            <div className={styles.resourceStatusAndHubertWrapper}>
+              <ResourceStatus />
+              <Hubert />
+            </div>
 
             <div className={styles.adminBookingViewWrapper}>
               <AdminBookings />
             </div>
 
-            <div className={styles.resourceStatusAndUserListWrapper}>
-              <ResourceStatus />
+            <div className={styles.userListAndButtonWrapper}>
+              <div className={styles.buttonWrapper}>
+                <button
+                  className={styles.registerButton}
+                  type="button"
+                  onClick={() => setShowRegister(true)}
+                >
+                  Registrera användare
+                </button>
+                <button className={styles.lockResource}>
+                  Lås en resurs
+                </button>
+              </div>
               <UserList />
             </div>
           </>
