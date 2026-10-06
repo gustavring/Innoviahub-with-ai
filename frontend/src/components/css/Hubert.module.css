@@ -136,12 +136,14 @@
 }
 
 .chatAndSendWrapper {
-  flex: 1;
-  min-height: 0;
-  padding: 20px;
-
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  margin: 20px;
+  padding: 10px;
+  background-color: #07111c91;
+  border-radius: 15px;
 }
 
 .chatArea {

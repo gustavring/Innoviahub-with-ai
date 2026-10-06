@@ -19,6 +19,10 @@
     letter-spacing: 1px;
 }
 
+.logo span {
+    color: var(--primary);
+}
+
 .loginButton {
     padding: 10px 18px;
     background: transparent;

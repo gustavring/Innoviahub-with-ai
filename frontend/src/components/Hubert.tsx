@@ -9,8 +9,38 @@ export default function Hubert() {
   const [isClosing, setIsClosing] = useState(false);
 
   const [isBlinking, setIsBlinking] = useState(false);
+  const [isButtonBlinking, setIsButtonBlinking] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [isGreeting, setIsGreeting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      return;
+    }
+
+    let blinkTimeout: ReturnType<typeof setTimeout>;
+    let blinkDuration: ReturnType<typeof setTimeout>;
+
+    function scheduleButtonBlink() {
+      const nextBlink = 3000 + Math.random() * 4000;
+
+      blinkTimeout = setTimeout(() => {
+        setIsButtonBlinking(true);
+
+        blinkDuration = setTimeout(() => {
+          setIsButtonBlinking(false);
+          scheduleButtonBlink();
+        }, 150);
+      }, nextBlink);
+    }
+
+    scheduleButtonBlink();
+
+    return () => {
+      clearTimeout(blinkTimeout);
+      clearTimeout(blinkDuration);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen || isGreeting) {
@@ -42,7 +72,11 @@ export default function Hubert() {
     };
   }, [isOpen, isGreeting]);
 
-  const buttonHubertIcon = isHovering ? hubertHappy : hubertIcon;
+  const buttonHubertIcon = isHovering
+    ? hubertHappy
+    : isButtonBlinking
+      ? hubertBlink
+      : hubertIcon;
 
   function openHubert() {
     setIsOpen(true);
