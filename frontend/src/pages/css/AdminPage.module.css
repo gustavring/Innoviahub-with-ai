@@ -1,22 +1,46 @@
 .adminPage {
   min-height: calc(100vh - 80px);
   display: flex;
-  align-items: flex-start;
   flex-direction: column;
+  align-items: center;
+  gap: 20px;
   padding: 80px 20px 20px;
+
   background:
     radial-gradient(circle at top, rgba(0, 153, 255, 0.12), transparent 35%),
     var(--background);
+}
+
+.resourceStatusAndHubertWrapper {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 20px;
+  align-items: stretch;
 }
 
 .adminBookingViewWrapper {
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
-  gap: 20px;
+
   display: flex;
-  align-items: center;
   flex-direction: column;
+  gap: 20px;
+}
+
+.userListAndButtonWrapper {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  align-items: start;
+  gap: 20px;
 }
 
 .admin {
@@ -24,9 +48,9 @@
   max-width: 1100px;
   margin: 0 auto;
   padding: 40px;
+
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background-color: var(--surface);
-
   border: 1px solid var(--border);
   border-radius: 6px;
 }
@@ -34,7 +58,6 @@
 .eyebrow {
   margin: 0 0 8px;
   color: var(--primary);
-
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 1.5px;
@@ -42,15 +65,12 @@
 
 .admin h1 {
   margin: 0 0 12px;
-
   color: var(--text);
-
   font-size: 32px;
 }
 
 .description {
   margin: 0;
-
   color: var(--text-secondary);
   line-height: 1.5;
 }
@@ -58,11 +78,12 @@
 .landingButton {
   width: 100%;
   padding: 13px;
+  margin-top: 20px;
+
   background: transparent;
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--text-secondary);
-  margin-top: 20px;
   cursor: pointer;
 
   transition:
@@ -82,67 +103,78 @@
   background-color: rgba(19, 133, 226, 0.05);
 }
 
-.resourceStatusAndUserListWrapper {
-  width: 100%;
-  max-width: 1100px;
-  margin: 20px auto 0;
-
+.buttonWrapper {
   display: flex;
-  flex-direction: row;
-  gap: 15px;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.registerButton {
+.registerButton,
+.lockResource {
   width: 100%;
-  max-width: 1100px;
-  margin: 0 auto 20px;
-  padding: 13px 18px;
+  height: 55px;
 
   background: transparent;
-  border: 1px solid var(--primary);
-  border-radius: 4px;
+  border-radius: 3px;
 
-  color: var(--primary);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
 
   cursor: pointer;
+}
 
-  transition:
-    border-color 0.2s ease,
-    color 0.2s ease,
-    background-color 0.2s ease;
+/* Blå */
+.registerButton {
+  color: var(--primary);
+  border: 1px solid var(--primary);
 }
 
 .registerButton:hover {
-  color: var(--text);
-  border-color: var(--primary);
-  background-color: rgba(21, 151, 255, 0.05);
+  background-color: rgba(21, 151, 255, 0.08);
 }
 
-.registerButton:active {
-  color: var(--primary);
-  background-color: rgba(19, 133, 226, 0.05);
+/* Röd */
+.lockResource {
+  color: #ff3b3b;
+  border: 1px solid #ff3b3b;
 }
 
+.lockResource:hover {
+  background-color: rgba(255, 59, 59, 0.08);
+  color: #ff3b3b;
+}
+
+/* Mindre skärmar */
 @media (max-width: 1000px) {
-    .adminPage {
-        padding: 50px 16px 16px;
-    }
+  .adminPage {
+    padding: 50px 16px 16px;
+  }
 
-    .resourceStatusAndUserListWrapper {
-        flex-direction: column;
-        gap: 15px;
-    }
+  .resourceStatusAndHubertWrapper {
+    grid-template-columns: 1fr 170px;
+    gap: 15px;
+  }
+
+  .userListAndButtonWrapper {
+    grid-template-columns: 1fr;
+  }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 800px) {
   .adminPage {
     min-height: calc(100vh - 64px);
     padding: 30px 12px 12px;
+    gap: 12px;
   }
 
-  .adminBookingViewWrapper {
+  .resourceStatusAndHubertWrapper {
+    grid-template-columns: 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+
+  .adminBookingViewWrapper,
+  .userListAndButtonWrapper {
     gap: 12px;
   }
 
@@ -171,15 +203,14 @@
     font-size: 12px;
   }
 
-  .resourceStatusAndUserListWrapper {
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 12px;
+  .buttonWrapper {
+    gap: 8px;
   }
 
-  .registerButton {
-    margin-bottom: 12px;
+  .registerButton,
+  .lockResource {
     padding: 10px;
     font-size: 12px;
+    margin: 0;
   }
 }

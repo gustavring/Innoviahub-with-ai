@@ -6,6 +6,7 @@ import Calendar from "../components/Calendar";
 import TimeSlots from "../components/TimeSlots";
 import Resources from "../components/Resources";
 import Bookings from "../components/Bookings";
+import Hubert from "../components/Hubert";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -168,7 +169,7 @@ export default function LandingPage() {
       <Navbar />
 
       <main className={styles.landingPage}>
-        <div className={styles.resourcesLandingWrapper}>
+        <div className={styles.resourcesAndHubertWrapper}>
           <Resources
             selectedResourceType={selectedResourceType}
             onResourceTypeSelect={(resourceType) => {
@@ -179,6 +180,8 @@ export default function LandingPage() {
               setBookingError("");
             }}
           />
+
+          <Hubert />
         </div>
 
         <div className={styles.bookingCalendarWrapper}>

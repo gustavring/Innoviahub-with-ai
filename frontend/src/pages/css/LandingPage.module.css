@@ -83,20 +83,17 @@
   align-items: stretch;
 }
 
-.resourcesLandingWrapper {
+.resourcesAndHubertWrapper {
   width: 100%;
   max-width: 1000px;
   margin: 0 auto;
 
-  display: flex;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: 1fr 180px;
   gap: 20px;
+  align-items: stretch;
 }
 
-.resourcesLandingWrapper > * {
-  flex: 1;
-  min-width: 0;
-}
 .bookingAction {
   margin-top: 20px;
   padding: 20px;
@@ -154,7 +151,7 @@
   padding: 8px 12px;
 
   background-color: var(--background);
-  color: var(--text);
+  color: var(--primary);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   border: 1px solid var(--primary);
   border-radius: 4px;
@@ -168,7 +165,6 @@
 
 .backButton:hover {
   border-color: var(--primary);
-  color: var(--primary);
   background-color: var(--surface-light);
 }
 

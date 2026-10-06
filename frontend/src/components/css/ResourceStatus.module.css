@@ -1,6 +1,6 @@
 .resourceStatus {
     width: 100%;
-    max-width: 1000px;
+    height: 100%;
     padding: 24px;
 
     background-color: var(--surface);

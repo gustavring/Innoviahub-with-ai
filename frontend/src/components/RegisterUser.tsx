@@ -81,7 +81,7 @@ export default function RegisterUser({ onBack }: RegisterUserProps) {
             type="password"
             label="Lösenord"
             value={password}
-            placeholder="Abc123!"
+            placeholder="ex. Abc123!"
             onChange={setPassword}
           />
 
