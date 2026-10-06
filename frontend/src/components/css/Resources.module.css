@@ -89,7 +89,7 @@
 
 .resourceButtonWrapper button:hover {
   border-color: var(--primary);
-  color: var(--primary);
+  color: var(--text);
   background-color: var(--surface-light);
 }
 
