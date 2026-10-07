@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using api.Services;
 using api.Hubs;
+using System.Net.Http.Headers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -112,6 +113,19 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddHttpClient("openai", client =>
+{
+    client.BaseAddress = new Uri("https://api.openai.com/v1/responses");
+
+    var apiKey = Environment.GetEnvironmentVariable("AI_API_KEY")
+        ?? throw new InvalidOperationException("AI_API_KEY saknas.");
+
+    client.DefaultRequestHeaders.Authorization =
+        new AuthenticationHeaderValue("Bearer", apiKey);
+
+    client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+});
 
 var app = builder.Build();
 
