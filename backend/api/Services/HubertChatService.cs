@@ -1,3 +1,5 @@
+
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -30,17 +32,18 @@ public class HubertChatService
     public async Task<(string Message, string ResponseId)> GetResponseAsync(
         string userMessage,
         string? previousResponseId,
-        string? userId)
+        string? userId,
+        bool isAdmin)
     {
-        // En bekräftelse gäller bara ett sparat bokningsförslag.
+        // Behåll den befintliga bokningsbekräftelsen på servern.
         if (!string.IsNullOrWhiteSpace(userId))
         {
             var reply = userMessage.Trim().ToLowerInvariant();
 
             if (reply is "ja" or "ja tack" or "bekräfta" or "bekräfta bokningen")
             {
-                if (!_pendingBookings.TryTake(userId, out var pendingRequest)
-                    || pendingRequest == null)
+                if (!_pendingBookings.TryTake(userId, out var pending)
+                    || pending == null)
                 {
                     return (
                         "Det finns ingen väntande bokning att bekräfta. " +
@@ -50,9 +53,7 @@ public class HubertChatService
                 }
 
                 var booking = await _hubertService.CreateBookingAsync(
-                    pendingRequest,
-                    userId
-                );
+                    pending, userId);
 
                 if (booking == null)
                 {
@@ -64,24 +65,22 @@ public class HubertChatService
                     );
                 }
 
-                var start = pendingRequest.Date!.Value.ToDateTime(
-                    pendingRequest.StartTime!.Value
-                );
+                var start = pending.Date!.Value.ToDateTime(
+                    pending.StartTime!.Value);
 
                 var end = start.AddMinutes(
-                    pendingRequest.DurationMinutes!.Value
-                );
+                    pending.DurationMinutes!.Value);
 
                 return (
                     $"""
                     ✅ Bokningen är bekräftad!
 
                     Bokningsuppgifter:
-                    • Resurs: {pendingRequest.ResourceType}
+                    • Resurs: {pending.ResourceType}
                     • Datum: {start:yyyy-MM-dd}
                     • Starttid: {start:HH:mm}
                     • Sluttid: {end:HH:mm}
-                    • Längd: {pendingRequest.DurationMinutes} minuter
+                    • Längd: {pending.DurationMinutes} minuter
                     • Bokningsnummer: {booking.BookingId}
 
                     Du hittar din bokning under Mina bokningar.
@@ -102,367 +101,55 @@ public class HubertChatService
             }
         }
 
-        var client = _httpClientFactory.CreateClient("openai");
-
         var resources = await _hubertService.GetResourcesAsync();
 
-        var resourceInfo = string.Join(
-            "\n",
+        var resourceInfo = string.Join("\n",
             resources
-                .GroupBy(resource => resource.ResourceType)
-                .Select(group => $"{group.Key}: {group.Count()} stycken")
-        );
+                .GroupBy(r => r.ResourceType)
+                .Select(g => $"{g.Key}: {g.Count()} stycken"));
 
-        var swedishNow = _hubertService.GetCurrentSwedishTime();
+        var now = _hubertService.GetCurrentSwedishTime();
 
-        var loginStatus = string.IsNullOrWhiteSpace(userId)
-            ? "Användaren är inte inloggad."
-            : "Användaren är inloggad.";
+        var instructions = BuildInstructions(
+            resourceInfo,
+            now,
+            !string.IsNullOrWhiteSpace(userId),
+            isAdmin);
 
-        var instructions = $"""
-            Du är Hubert, InnoviaHubs personliga digitala assistent.
+        var tools = BuildTools(isAdmin && !string.IsNullOrWhiteSpace(userId));
 
-            INLOGGNINGSSTATUS
-            {loginStatus}
+        var client = _httpClientFactory.CreateClient("openai");
 
-            Du är kunnig, trevlig, hjälpsam och professionell.
-            Skriv naturligt på svenska, som en vänlig medarbetare.
-
-            SAMTALSSTIL
-            Svara direkt på användarens fråga.
-            Håll svaren korta, tydliga och relevanta.
-
-            Ställ bara följdfrågor när information verkligen saknas.
-            Fråga inte om något som användaren redan har angett.
-
-            Föreslå inte andra tjänster eller alternativ
-            om användaren inte har bett om dem.
-
-            Upprepa inte samma fråga flera gånger.
-            Om användaren har svarat, gå vidare.
-
-            Använd naturliga formuleringar.
-            Undvik onödiga numrerade alternativ och långa förklaringar.
-
-            Om användarens avsikt är tydlig,
-            be inte om en extra bekräftelse av vad frågan betyder.
-
-            Du hjälper användare med frågor om InnoviaHubs
-            resurser, tillgänglighet och bokningar.
-
-            AKTUELL RESURSINFORMATION
-            {resourceInfo}
-
-            Resursinformationen visar vilka resurser som finns totalt.
-            Den visar INTE vilka resurser som är lediga just nu.
-
-            RESURSLISTOR
-            När användaren frågar vilka resurser som finns
-            eller vilka resurstyper InnoviaHub erbjuder,
-            presentera dem alltid som en tydlig punktlista.
-
-            Använd tecknet • framför varje resurs.
-            Använd inte bindestreck (-) eller numrerade listor.
-
-            Exempel på format:
-
-            📋 Våra resurser:
-
-            • Skrivbord: [antal] stycken
-            • Mötesrum: [antal] stycken
-            • VRHeadset: [antal] stycken
-            • AIServer: [antal] stycken
-
-            Använd de faktiska antalen från AKTUELL RESURSINFORMATION.
-            Hitta aldrig på resurser eller antal.
-
-            Om användaren bara frågar vilka resurser som finns,
-            visa listan direkt utan att fråga efter datum eller tid.
-
-            DATUM OCH TID
-            Aktuellt datum och tid i Sverige:
-            {swedishNow:yyyy-MM-dd HH:mm}
-
-            Tolka relativa datum enligt svensk kalender.
-            Bokningsbara tider är 07:00–24:00.
-
-            SAMTALSMINNE
-            Kom ihåg information som användaren har angett
-            tidigare i samma samtal.
-
-            Om användaren exempelvis först frågar om ett
-            mötesrum nästa onsdag och sedan säger
-            "från 12 i två timmar", ska du kombinera
-            informationen från båda meddelandena.
-
-            Om användaren ändrar datum, tid eller resurstyp
-            ska den nya informationen gälla.
-
-            VERKTYG OCH TILLGÄNGLIGHET
-            Du har tillgång till verktyget check_availability.
-
-            Använd verktyget när användaren frågar om
-            tillgänglighet, lediga resurser eller upptagna resurser
-            under ett bestämt tidsintervall.
-
-            Använd även verktyget om användaren frågar
-            om ALLA resurser är lediga eller hur många
-            som är bokade under ett tidsintervall.
-
-            Om information saknas, ställ en naturlig följdfråga.
-            Gissa inte resurstyp, datum, starttid eller bokningslängd.
-
-            När användaren anger starttid och sluttid,
-            räkna ut bokningslängden i minuter.
-
-            Verktyget returnerar:
-
-            • totalResources: totalt antal resurser
-            • availableResources: antal lediga resurser
-            • occupiedResources: antal upptagna resurser
-            • isAvailable: om minst en resurs är ledig
-
-            Använd alltid verktygets faktiska siffror
-            när du svarar på frågor om tillgänglighet.
-
-            Om totalResources är 4 och availableResources är 3
-            ska du förklara att 3 är lediga och 1 är upptagen.
-
-            Om availableResources är lika med totalResources
-            är alla resurser lediga under tidsintervallet.
-
-            Om availableResources är 0 är ingen resurs ledig.
-
-            Påstå aldrig att resurser är lediga eller upptagna
-            utan ett verifierat resultat från verktyget.
-
-            Om användaren frågar om en annan tid,
-            använd verktyget igen.
-
-            Verktyget visar antal lediga och upptagna resurser,
-            men inte vilka specifika resurs-ID som är bokade.
-
-            BOKNINGAR
-            Du kan kontrollera tillgänglighet med check_availability.
-
-            När användaren vill genomföra en bokning och alla
-            uppgifter finns, använd prepare_booking.
-
-            Det verktyget kontrollerar tillgänglighet
-            och lagrar ett väntande bokningsförslag på servern.
-
-            Om användaren inte är inloggad,
-            förklara att inloggning krävs.
-
-            Om prepare_booking returnerar prepared=true,
-            ska du alltid presentera bokningsförslaget
-            i följande tydliga format:
-
-            📋 Förslag till bokning:
-            
-            • Resurs: [resurstyp]
-            • Datum: [YYYY-MM-DD]
-            • Starttid: [HH:mm]
-            • Sluttid: [HH:mm]
-            • Längd: [antal timmar och minuter]
-
-            Vill du bekräfta bokningen?
-            Svara ja eller nej.
-
-            Använd alltid radbrytningar och en punktlista.
-            Skriv aldrig hela bokningsförslaget som ett
-            sammanhängande textstycke.
-
-            Beräkna sluttiden från starttiden och
-            durationMinutes som verktyget returnerar.
-            Använd endast uppgifter från verktygsresultatet.
-
-            Be inte om rubrik eller kommentar, det behövs inte.
-
-            Ett ja behandlas av servern i nästa användarmeddelande.
-
-            Du får aldrig själv påstå att bokningen är skapad.
-
-            Om användaren ändrar uppgifter,
-            använd prepare_booking igen.
-
-            Vid ren fråga om tillgänglighet ska du
-            enbart använda check_availability.
-            """;
-
-        var tools = new object[]
-        {
+        var (responseId, output) = await SendToOpenAiAsync(
+            client,
             new
             {
-                type = "function",
-                name = "check_availability",
-                description =
-                    "Kontrollerar verklig tillgänglighet för en resurstyp " +
-                    "under ett angivet tidsintervall på InnoviaHub. " +
-                    "Returnerar totalt antal, antal lediga och antal upptagna.",
-                parameters = new
-                {
-                    type = "object",
-                    properties = new
-                    {
-                        resourceType = new
-                        {
-                            type = "string",
-                            @enum = new[]
-                            {
-                                "Skrivbord",
-                                "Mötesrum",
-                                "VRHeadset",
-                                "AIServer"
-                            }
-                        },
-                        date = new
-                        {
-                            type = "string",
-                            description = "Datum YYYY-MM-DD"
-                        },
-                        startTime = new
-                        {
-                            type = "string",
-                            description = "Svensk lokal tid HH:mm:ss"
-                        },
-                        durationMinutes = new
-                        {
-                            type = "integer",
-                            description = "Bokningens längd i minuter"
-                        }
-                    },
-                    required = new[]
-                    {
-                        "resourceType",
-                        "date",
-                        "startTime",
-                        "durationMinutes"
-                    },
-                    additionalProperties = false
-                },
-                strict = true
-            },
-            new
-            {
-                type = "function",
-                name = "prepare_booking",
-                description =
-                    "Förbereder en bokning som användaren uttryckligen vill göra. " +
-                    "Kontrollerar tillgänglighet och sparar förslaget för bekräftelse. " +
-                    "Returnerar totalt antal, antal lediga och antal upptagna.",
-                parameters = new
-                {
-                    type = "object",
-                    properties = new
-                    {
-                        resourceType = new
-                        {
-                            type = "string",
-                            @enum = new[]
-                            {
-                                "Skrivbord",
-                                "Mötesrum",
-                                "VRHeadset",
-                                "AIServer"
-                            }
-                        },
-                        date = new
-                        {
-                            type = "string",
-                            description = "Datum YYYY-MM-DD"
-                        },
-                        startTime = new
-                        {
-                            type = "string",
-                            description = "Svensk lokal tid HH:mm:ss"
-                        },
-                        durationMinutes = new
-                        {
-                            type = "integer",
-                            description = "Bokningens längd i minuter"
-                        }
-                    },
-                    required = new[]
-                    {
-                        "resourceType",
-                        "date",
-                        "startTime",
-                        "durationMinutes"
-                    },
-                    additionalProperties = false
-                },
-                strict = true
-            }
-        };
-
-        var body = new
-        {
-            model = "gpt-5-mini",
-            instructions,
-            input = userMessage,
-            previous_response_id = previousResponseId,
-            tools,
-            parallel_tool_calls = false
-        };
-
-        var response = await client.PostAsJsonAsync("", body);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            var error = await response.Content.ReadAsStringAsync();
-
-            throw new HttpRequestException(
-                $"OpenAI-fel: {error}");
-        }
-
-        using var firstJson = JsonDocument.Parse(
-            await response.Content.ReadAsStringAsync());
-
-        var currentResponseId = firstJson.RootElement
-            .GetProperty("id")
-            .GetString()
-            ?? throw new InvalidOperationException(
-                "Svar-ID saknas.");
-
-        var currentOutput = firstJson.RootElement
-            .GetProperty("output")
-            .Clone();
+                model = "gpt-5-mini",
+                instructions,
+                input = userMessage,
+                previous_response_id = previousResponseId,
+                tools,
+                parallel_tool_calls = false
+            });
 
         for (int attempt = 0; attempt < 8; attempt++)
         {
-            var functionCalls = currentOutput
-                .EnumerateArray()
-                .Where(item =>
-                    item.GetProperty("type").GetString()
-                    == "function_call")
+            var calls = output.EnumerateArray()
+                .Where(x => x.GetProperty("type").GetString() == "function_call")
                 .ToList();
 
-            if (functionCalls.Count == 0)
+            if (calls.Count == 0)
+                return (ExtractMessage(output), responseId);
+
+            var results = new List<object>();
+
+            foreach (var call in calls)
             {
-                return (
-                    ExtractMessage(currentOutput),
-                    currentResponseId
-                );
-            }
+                var name = call.GetProperty("name").GetString();
+                var callId = call.GetProperty("call_id").GetString();
+                var arguments = call.GetProperty("arguments").GetString();
 
-            var toolOutputs = new List<object>();
-
-            foreach (var functionCall in functionCalls)
-            {
-                var name = functionCall
-                    .GetProperty("name")
-                    .GetString();
-
-                var callId = functionCall
-                    .GetProperty("call_id")
-                    .GetString();
-
-                var arguments = functionCall
-                    .GetProperty("arguments")
-                    .GetString();
-
-                if (name is not ("check_availability" or "prepare_booking") ||
+                if (string.IsNullOrWhiteSpace(name) ||
                     string.IsNullOrWhiteSpace(callId) ||
                     string.IsNullOrWhiteSpace(arguments))
                 {
@@ -470,162 +157,474 @@ public class HubertChatService
                         "Ogiltigt verktygsanrop från Hubert.");
                 }
 
-                var bookingRequest =
-                    JsonSerializer.Deserialize<HubertBookingRequestDto>(
-                        arguments,
-                        _jsonOptions
-                    );
+                var result = await HandleToolAsync(
+                    name, arguments, userId, isAdmin);
 
-                string toolResult;
-
-                if (bookingRequest?.ResourceType == null ||
-                    bookingRequest.Date == null ||
-                    bookingRequest.StartTime == null ||
-                    bookingRequest.DurationMinutes is null or <= 0)
-                {
-                    toolResult = JsonSerializer.Serialize(new
-                    {
-                        valid = false,
-                        message = "Bokningsuppgifterna är ofullständiga."
-                    });
-                }
-                else
-                {
-                    var startLocal =
-                        bookingRequest.Date.Value.ToDateTime(
-                            bookingRequest.StartTime.Value
-                        );
-
-                    var endLocal = startLocal.AddMinutes(
-                        bookingRequest.DurationMinutes.Value
-                    );
-
-                    var now = _hubertService.GetCurrentSwedishTime();
-
-                    if (startLocal < now ||
-                        startLocal.TimeOfDay < TimeSpan.FromHours(7) ||
-                        endLocal > startLocal.Date.AddDays(1))
-                    {
-                        toolResult = JsonSerializer.Serialize(new
-                        {
-                            valid = false,
-                            message =
-                                "Tiden är passerad eller ligger " +
-                                "utanför bokningsbara tider 07:00–24:00."
-                        });
-                    }
-                    else
-                    {
-                        var availability =
-                            await _hubertService.GetBookingAvailabilityAsync(
-                                bookingRequest
-                            );
-
-                        if (availability == null)
-                        {
-                            toolResult = JsonSerializer.Serialize(new
-                            {
-                                valid = false,
-                                message =
-                                    "Kunde inte kontrollera tillgängligheten."
-                            });
-                        }
-                        else
-                        {
-                            var occupiedResources =
-                                availability.TotalResources -
-                                availability.AvailableResources;
-
-                            var preparing = name == "prepare_booking";
-                            var prepared = false;
-
-                            if (preparing &&
-                                availability.AvailableResources > 0 &&
-                                !string.IsNullOrWhiteSpace(userId))
-                            {
-                                _pendingBookings.Save(
-                                    userId,
-                                    bookingRequest
-                                );
-
-                                prepared = true;
-                            }
-
-                            toolResult = JsonSerializer.Serialize(new
-                            {
-                                valid = true,
-                                prepared,
-                                loginRequired =
-                                    preparing &&
-                                    string.IsNullOrWhiteSpace(userId),
-                                resourceType =
-                                    bookingRequest.ResourceType.ToString(),
-                                date =
-                                    bookingRequest.Date.Value.ToString(
-                                        "yyyy-MM-dd"),
-                                startTime =
-                                    bookingRequest.StartTime.Value.ToString(
-                                        "HH:mm:ss"),
-                                durationMinutes =
-                                    bookingRequest.DurationMinutes.Value,
-                                totalResources =
-                                    availability.TotalResources,
-                                availableResources =
-                                    availability.AvailableResources,
-                                occupiedResources,
-                                isAvailable =
-                                    availability.AvailableResources > 0
-                            });
-                        }
-                    }
-                }
-
-                toolOutputs.Add(new
+                results.Add(new
                 {
                     type = "function_call_output",
                     call_id = callId,
-                    output = toolResult
+                    output = result
                 });
             }
 
-            var followUpBody = new
-            {
-                model = "gpt-5-mini",
-                previous_response_id = currentResponseId,
-                instructions,
-                tools,
-                parallel_tool_calls = false,
-                input = toolOutputs
-            };
-
-            var followUpResponse =
-                await client.PostAsJsonAsync("", followUpBody);
-
-            if (!followUpResponse.IsSuccessStatusCode)
-            {
-                var error =
-                    await followUpResponse.Content.ReadAsStringAsync();
-
-                throw new HttpRequestException(
-                    $"OpenAI-fel: {error}");
-            }
-
-            using var followUpJson = JsonDocument.Parse(
-                await followUpResponse.Content.ReadAsStringAsync());
-
-            currentResponseId = followUpJson.RootElement
-                .GetProperty("id")
-                .GetString()
-                ?? throw new InvalidOperationException(
-                    "Svar-ID saknas.");
-
-            currentOutput = followUpJson.RootElement
-                .GetProperty("output")
-                .Clone();
+            (responseId, output) = await SendToOpenAiAsync(
+                client,
+                new
+                {
+                    model = "gpt-5-mini",
+                    previous_response_id = responseId,
+                    instructions,
+                    tools,
+                    parallel_tool_calls = false,
+                    input = results
+                });
         }
 
         throw new InvalidOperationException(
             "Hubert gjorde för många verktygsanrop.");
+    }
+
+    private static string BuildInstructions(
+        string resourceInfo,
+        DateTime now,
+        bool loggedIn,
+        bool isAdmin)
+    {
+        return $"""
+            Du är Hubert, InnoviaHubs personliga digitala assistent.
+            Svara naturligt, vänligt, kort och tydligt på svenska.
+
+            STATUS
+            Inloggad: {loggedIn}
+            Administratör: {isAdmin}
+
+            RESURSER
+            {resourceInfo}
+
+            Dessa antal visar totalt antal resurser,
+            inte hur många som är lediga.
+
+            När användaren frågar vilka resurser som finns,
+            visa en punktlista med • och de faktiska antalen.
+            Fråga inte efter datum eller tid vid en ren resursfråga.
+
+            DATUM OCH TID
+            Svensk tid just nu: {now:yyyy-MM-dd HH:mm}
+            Tolka idag, imorgon och relativa datum enligt svensk tid.
+            Nästa vecka betyder måndag till söndag nästa kalendervecka.
+            Bokningsbara tider är 07:00–24:00.
+
+            SAMTAL
+            Kom ihåg tidigare uppgifter i samma samtal.
+            Kombinera exempelvis tidigare resurstyp och datum
+            med en starttid som användaren anger senare.
+            Nya uppgifter ersätter gamla.
+            Ställ bara följdfrågor när nödvändig information saknas.
+            Föreslå inte oombedda alternativ.
+
+            TILLGÄNGLIGHET
+            Använd check_availability vid frågor om lediga,
+            upptagna eller samtliga resurser under en viss tid.
+            Verktyget ger totalResources, availableResources,
+            occupiedResources och isAvailable.
+            Använd bara verifierade siffror.
+            Gissa aldrig resurstyp, datum, tid eller längd.
+            Räkna ut durationMinutes om start och slut anges.
+            Använd verktyget igen när tidsintervallet ändras.
+
+            BOKA
+            När användaren vill boka och alla uppgifter finns,
+            använd prepare_booking.
+            Vid ren tillgänglighetsfråga används bara
+            check_availability.
+
+            Om inloggning krävs, förklara det.
+            Om prepared=true, visa:
+
+            📋 Förslag till bokning:
+            • Resurs: [resurstyp]
+            • Datum: [YYYY-MM-DD]
+            • Starttid: [HH:mm]
+            • Sluttid: [HH:mm]
+            • Längd: [timmar och minuter]
+
+            Vill du bekräfta bokningen?
+            Svara ja eller nej.
+
+            Beräkna sluttiden från verktygets uppgifter.
+            Begär inte rubrik eller kommentar.
+            Servern hanterar användarens ja.
+            Påstå aldrig att bokningen är skapad
+            innan servern har bekräftat den.
+            Om uppgifterna ändras, använd prepare_booking igen.
+
+            MINA BOKNINGAR
+            Vid frågor om användarens egna bokningar,
+            använd get_my_bookings.
+            Om ingen period anges, använd idag till 30 dagar framåt.
+
+            Presentera varje bokning separat med en tydlig rubrik:
+            Bokning 1, Bokning 2, Bokning 3 och så vidare.
+
+            Använd alltid följande format:
+
+            Här är dina bokningar [period]:
+
+            Bokning 1:
+            • Resurs: [resurstyp]
+            • Datum: [YYYY-MM-DD]
+            • Starttid: [HH:mm]
+            • Sluttid: [HH:mm]
+
+            Bokning 2
+            • Resurs: [resurstyp]
+            • Datum: [YYYY-MM-DD]
+            • Starttid: [HH:mm]
+            • Sluttid: [HH:mm]
+
+            Visa varje uppgift på en egen rad.
+            Använd alltid • framför uppgifterna.
+            Skriv aldrig en bokning som en enda lång rad.
+            Ha en tom rad mellan bokningarna.
+            Använd bara uppgifter från verktyget.
+            Tiderna är redan konverterade till svensk tid.
+
+            Om inga bokningar finns, säg det tydligt.
+            Om användaren inte är inloggad, kräv inloggning.
+            """;
+    }
+
+    private static List<object> BuildTools(bool isAdmin)
+    {
+        var bookingParameters = new
+        {
+            type = "object",
+            properties = new
+            {
+                resourceType = new
+                {
+                    type = "string",
+                    @enum = new[]
+                    {
+                        "Skrivbord", "Mötesrum", "VRHeadset", "AIServer"
+                    }
+                },
+                date = new
+                {
+                    type = "string",
+                    description = "Datum YYYY-MM-DD"
+                },
+                startTime = new
+                {
+                    type = "string",
+                    description = "Svensk lokal tid HH:mm:ss"
+                },
+                durationMinutes = new
+                {
+                    type = "integer",
+                    description = "Längd i minuter"
+                }
+            },
+            required = new[]
+            {
+                "resourceType", "date", "startTime", "durationMinutes"
+            },
+            additionalProperties = false
+        };
+
+        var dateParameters = new
+        {
+            type = "object",
+            properties = new
+            {
+                fromDate = new
+                {
+                    type = "string",
+                    description = "Startdatum YYYY-MM-DD"
+                },
+                toDate = new
+                {
+                    type = "string",
+                    description = "Slutdatum YYYY-MM-DD"
+                }
+            },
+            required = new[] { "fromDate", "toDate" },
+            additionalProperties = false
+        };
+
+        var tools = new List<object>
+        {
+            new
+            {
+                type = "function",
+                name = "check_availability",
+                description =
+                    "Kontrollerar verklig tillgänglighet och returnerar " +
+                    "totalt antal, antal lediga och antal upptagna resurser.",
+                parameters = bookingParameters,
+                strict = true
+            },
+            new
+            {
+                type = "function",
+                name = "prepare_booking",
+                description =
+                    "Förbereder en bokning, kontrollerar tillgänglighet " +
+                    "och sparar förslaget för användarens bekräftelse.",
+                parameters = bookingParameters,
+                strict = true
+            },
+            new
+            {
+                type = "function",
+                name = "get_my_bookings",
+                description =
+                    "Hämtar den inloggade användarens egna bokningar.",
+                parameters = dateParameters,
+                strict = true
+            }
+        };
+
+        if (isAdmin)
+        {
+            tools.Add(new
+            {
+                type = "function",
+                name = "get_all_bookings",
+                description =
+                    "Hämtar alla användares bokningar. Endast admin.",
+                parameters = dateParameters,
+                strict = true
+            });
+        }
+
+        return tools;
+    }
+
+    private async Task<string> HandleToolAsync(
+        string name,
+        string arguments,
+        string? userId,
+        bool isAdmin)
+    {
+        return name switch
+        {
+            "check_availability" or "prepare_booking" =>
+                await HandleAvailabilityAsync(name, arguments, userId),
+
+            "get_my_bookings" or "get_all_bookings" =>
+                await HandleBookingsAsync(name, arguments, userId, isAdmin),
+
+            _ => throw new InvalidOperationException(
+                "Ogiltigt verktygsanrop från Hubert.")
+        };
+    }
+
+    private async Task<string> HandleAvailabilityAsync(
+        string name,
+        string arguments,
+        string? userId)
+    {
+        var request = JsonSerializer.Deserialize<HubertBookingRequestDto>(
+            arguments, _jsonOptions);
+
+        if (request?.ResourceType == null ||
+            request.Date == null ||
+            request.StartTime == null ||
+            request.DurationMinutes is null or <= 0)
+        {
+            return JsonSerializer.Serialize(new
+            {
+                valid = false,
+                message = "Bokningsuppgifterna är ofullständiga."
+            });
+        }
+
+        var start = request.Date.Value.ToDateTime(
+            request.StartTime.Value);
+
+        var end = start.AddMinutes(
+            request.DurationMinutes.Value);
+
+        var now = _hubertService.GetCurrentSwedishTime();
+
+        if (start < now ||
+            start.TimeOfDay < TimeSpan.FromHours(7) ||
+            end > start.Date.AddDays(1))
+        {
+            return JsonSerializer.Serialize(new
+            {
+                valid = false,
+                message =
+                    "Tiden är passerad eller ligger utanför " +
+                    "bokningsbara tider 07:00–24:00."
+            });
+        }
+
+        var availability =
+            await _hubertService.GetBookingAvailabilityAsync(request);
+
+        if (availability == null)
+        {
+            return JsonSerializer.Serialize(new
+            {
+                valid = false,
+                message = "Kunde inte kontrollera tillgängligheten."
+            });
+        }
+
+        var preparing = name == "prepare_booking";
+        var prepared = false;
+
+        if (preparing &&
+            availability.AvailableResources > 0 &&
+            !string.IsNullOrWhiteSpace(userId))
+        {
+            _pendingBookings.Save(userId, request);
+            prepared = true;
+        }
+
+        return JsonSerializer.Serialize(new
+        {
+            valid = true,
+            prepared,
+            loginRequired = preparing && string.IsNullOrWhiteSpace(userId),
+            resourceType = request.ResourceType.ToString(),
+            date = request.Date.Value.ToString("yyyy-MM-dd"),
+            startTime = request.StartTime.Value.ToString("HH:mm:ss"),
+            durationMinutes = request.DurationMinutes.Value,
+            totalResources = availability.TotalResources,
+            availableResources = availability.AvailableResources,
+            occupiedResources =
+                availability.TotalResources - availability.AvailableResources,
+            isAvailable = availability.AvailableResources > 0
+        });
+    }
+
+    private async Task<string> HandleBookingsAsync(
+        string name,
+        string arguments,
+        string? userId,
+        bool isAdmin)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return JsonSerializer.Serialize(new
+            {
+                success = false,
+                message = "Du måste vara inloggad för att se bokningar."
+            });
+        }
+
+        if (name == "get_all_bookings" && !isAdmin)
+        {
+            return JsonSerializer.Serialize(new
+            {
+                success = false,
+                message = "Endast administratörer får se alla bokningar."
+            });
+        }
+
+        using var json = JsonDocument.Parse(arguments);
+        var root = json.RootElement;
+
+        var fromText = root.TryGetProperty("fromDate", out var fromElement)
+            && fromElement.ValueKind == JsonValueKind.String
+                ? fromElement.GetString()
+                : null;
+
+        var toText = root.TryGetProperty("toDate", out var toElement)
+            && toElement.ValueKind == JsonValueKind.String
+                ? toElement.GetString()
+                : null;
+
+        if (!DateOnly.TryParseExact(
+                fromText, "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var fromDate) ||
+            !DateOnly.TryParseExact(
+                toText, "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var toDate) ||
+            toDate < fromDate)
+        {
+            return JsonSerializer.Serialize(new
+            {
+                success = false,
+                message = "Ogiltigt datumintervall."
+            });
+        }
+
+        var allUsers = name == "get_all_bookings";
+
+        var bookings = allUsers
+            ? await _hubertService.GetAllBookingsForHubertAsync(
+                fromDate, toDate)
+            : await _hubertService.GetMyBookingsAsync(
+                userId, fromDate, toDate);
+
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(
+            "Europe/Stockholm");
+
+        var result = bookings.Select(b =>
+        {
+            var start = TimeZoneInfo.ConvertTimeFromUtc(
+                DateTime.SpecifyKind(b.StartTime, DateTimeKind.Utc),
+                timeZone);
+
+            var end = TimeZoneInfo.ConvertTimeFromUtc(
+                DateTime.SpecifyKind(b.EndTime, DateTimeKind.Utc),
+                timeZone);
+
+            return new
+            {
+                bookingId = b.BookingId,
+                resourceType =
+                    b.Resource?.ResourceType.ToString() ?? "Okänd resurs",
+                date = start.ToString("yyyy-MM-dd"),
+                startTime = start.ToString("HH:mm"),
+                endTime = end.ToString("HH:mm"),
+                userEmail = allUsers
+                    ? b.User?.Email ?? "Okänd användare"
+                    : null
+            };
+        }).ToList();
+
+        return JsonSerializer.Serialize(new
+        {
+            success = true,
+            fromDate = fromDate.ToString("yyyy-MM-dd"),
+            toDate = toDate.ToString("yyyy-MM-dd"),
+            bookings = result
+        });
+    }
+
+    private static async Task<(string ResponseId, JsonElement Output)>
+        SendToOpenAiAsync(HttpClient client, object body)
+    {
+        using var response = await client.PostAsJsonAsync("", body);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+
+            throw new HttpRequestException($"OpenAI-fel: {error}");
+        }
+
+        using var json = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync());
+
+        var responseId = json.RootElement
+            .GetProperty("id")
+            .GetString()
+            ?? throw new InvalidOperationException("Svar-ID saknas.");
+
+        var output = json.RootElement
+            .GetProperty("output")
+            .Clone();
+
+        return (responseId, output);
     }
 
     private static string ExtractMessage(JsonElement output)
@@ -633,22 +632,19 @@ public class HubertChatService
         foreach (var item in output.EnumerateArray())
         {
             if (item.GetProperty("type").GetString() != "message")
-            {
                 continue;
-            }
 
             foreach (var content in item
                 .GetProperty("content")
                 .EnumerateArray())
             {
                 if (content.TryGetProperty("text", out var text))
-                {
                     return text.GetString() ?? "";
-                }
             }
         }
 
         return "Jag kunde inte formulera ett svar just nu.";
     }
 }
+
 

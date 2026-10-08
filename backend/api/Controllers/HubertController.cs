@@ -33,11 +33,15 @@ public class HubertController : ControllerBase
             var userId = User.Identity?.IsAuthenticated == true
                 ? User.FindFirstValue(ClaimTypes.NameIdentifier)
                 : null;
+            
+            var isAdmin = User.Identity?.IsAuthenticated == true 
+                && User.IsInRole("Admin");
 
             var result = await _hubertChatService.GetResponseAsync(
                 request.Message,
                 request.PreviousResponseId,
-                userId
+                userId,
+                isAdmin
             );
 
             return Ok(new HubertResponseDto

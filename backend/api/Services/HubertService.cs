@@ -84,6 +84,57 @@ public class HubertService
         }).ToList();
     }
 
+    public async Task<List<Booking>> GetMyBookingsAsync(string userId, DateOnly fromDate, DateOnly toDate)
+    {
+        if (string.IsNullOrWhiteSpace(userId) ||
+            toDate < fromDate)
+        {
+            return new List<Booking>();
+        }
+
+        var fromLocal = fromDate.ToDateTime(TimeOnly.MinValue);
+        var toLocalExclusive = toDate.AddDays(1)
+            .ToDateTime(TimeOnly.MinValue);
+
+        var fromUtc = _timeService.ToUtc(fromLocal);
+        var toUtcExclusive = _timeService.ToUtc(toLocalExclusive);
+
+        var bookings = await _bookingRepository.GetByUserIdAsync(userId);
+
+        return bookings
+            .Where(b =>
+                b.StartTime < toUtcExclusive &&
+                b.EndTime > fromUtc)
+            .OrderBy(b => b.StartTime)
+            .ToList();
+    }
+
+    public async Task<List<Booking>> GetAllBookingsForHubertAsync(
+        DateOnly fromDate,
+        DateOnly toDate)
+    {
+        if (toDate < fromDate)
+        {
+            return new List<Booking>();
+        }
+
+        var fromLocal = fromDate.ToDateTime(TimeOnly.MinValue);
+        var toLocalExclusive = toDate.AddDays(1)
+            .ToDateTime(TimeOnly.MinValue);
+
+        var fromUtc = _timeService.ToUtc(fromLocal);
+        var toUtcExclusive = _timeService.ToUtc(toLocalExclusive);
+
+        var bookings = await _bookingRepository.GetAllAsync();
+
+        return bookings
+            .Where(b =>
+                b.StartTime < toUtcExclusive &&
+                b.EndTime > fromUtc)
+            .OrderBy(b => b.StartTime)
+            .ToList();
+    }
+
     public async Task<Booking?> CreateBookingAsync(
         HubertBookingRequestDto request,
         string? userId)
