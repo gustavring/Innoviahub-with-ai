@@ -1,4 +1,6 @@
+
 using api.Dtos.HubertDtos;
+using api.Dtos.ResourceDtos;
 using api.Interfaces;
 
 namespace api.Services;
@@ -24,8 +26,8 @@ public class HubertService
         return _timeService.GetCurrentSwedishTime();
     }
 
-    public async Task<bool> IsBookingAvailableAsync(
-    HubertBookingRequestDto request)
+    public async Task<ResourceTypeAvailabilityDto?>
+        GetBookingAvailabilityAsync(HubertBookingRequestDto request)
     {
         if (request.ResourceType == null ||
             request.Date == null ||
@@ -33,7 +35,7 @@ public class HubertService
             request.DurationMinutes == null ||
             request.DurationMinutes <= 0)
         {
-            return false;
+            return null;
         }
 
         var startLocal = request.Date.Value.ToDateTime(
@@ -51,7 +53,16 @@ public class HubertService
                 startUtc,
                 endUtc);
 
-        return availability.AvailableResources > 0;
+        Console.WriteLine(
+            $"HUBERT TILLGÄNGLIGHET: " +
+            $"Resurs={request.ResourceType}, " +
+            $"StartUTC={startUtc}, " +
+            $"SlutUTC={endUtc}, " +
+            $"Totalt={availability.TotalResources}, " +
+            $"Lediga={availability.AvailableResources}"
+        );
+
+        return availability;
     }
 
     public async Task<List<HubertResourceDto>> GetResourcesAsync()

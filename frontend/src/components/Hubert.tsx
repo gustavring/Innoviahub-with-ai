@@ -1,9 +1,20 @@
+
 import { useEffect, useRef, useState } from "react";
 import styles from "./css/Hubert.module.css";
 import hubertIcon from "../assets/Hubert/HubertOpenEyes.svg";
 import hubertBlink from "../assets/Hubert/HubertClosedEyes.svg";
 import hubertHappy from "../assets/Hubert/HubertHappyEyes.svg";
 import hubertThinking from "../assets/Hubert/HubertLookDownEyes.svg";
+
+type ChatMessage = {
+  sender: "user" | "hubert";
+  text: string;
+};
+
+type HubertApiResponse = {
+  message: string;
+  responseId: string;
+};
 
 export default function Hubert() {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,12 +28,13 @@ export default function Hubert() {
   const [isThinking, setIsThinking] = useState(false);
 
   const [message, setMessage] = useState("");
-
-  const [messages, setMessages] = useState<
-    { sender: "user" | "hubert"; text: string }[]
-  >([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const chatAreaRef = useRef<HTMLDivElement>(null);
+  const previousResponseIdRef = useRef<string | null>(null);
+
+  /* hindrar flera samtidiga API-anrop */
+  const isSendingRef = useRef(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -134,17 +146,20 @@ export default function Hubert() {
   }
 
   async function sendMessage() {
-    if (!message.trim()) {
+    if (!message.trim() || isSendingRef.current) {
       return;
     }
 
-    const userMessage = message;
+    isSendingRef.current = true;
 
-    setMessages((prev) => [...prev, { sender: "user", text: userMessage }]);
+    const userMessage = message.trim();
+
+    setMessages((prev) => [
+      ...prev,
+      { sender: "user", text: userMessage },
+    ]);
 
     setMessage("");
-
-    /* Hubert börjar tänka */
     setIsThinking(true);
 
     try {
@@ -155,35 +170,57 @@ export default function Hubert() {
         },
         body: JSON.stringify({
           message: userMessage,
+          previousResponseId: previousResponseIdRef.current,
         }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
 
-        throw new Error(`Hubert API-fel (${response.status}): ${errorText}`);
+        throw new Error(
+          `Hubert API-fel (${response.status}): ${errorText}`
+        );
       }
 
-      const data = await response.json();
+      const data: HubertApiResponse = await response.json();
+
+      if (
+        typeof data.message !== "string" ||
+        typeof data.responseId !== "string" ||
+        !data.responseId
+      ) {
+        throw new Error("Ogiltigt svar från Hubert API.");
+      }
+
+      /* spara svar-ID till nästa meddelande */
+      previousResponseIdRef.current = data.responseId;
 
       setMessages((prev) => [
         ...prev,
         { sender: "hubert", text: data.message },
       ]);
 
-      setIsThinking(false);
       setIsGreeting(true);
 
-      /* efter 700 ms går Hubert tillbaka till vanligt läge */
       setTimeout(() => {
         setIsGreeting(false);
       }, 700);
     } catch (error) {
       console.error(error);
 
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "hubert",
+          text: "Oj, något gick fel. Försök gärna igen om en stund.",
+        },
+      ]);
+    } finally {
       setIsThinking(false);
+      isSendingRef.current = false;
     }
   }
+
   return (
     <>
       <button
@@ -255,6 +292,7 @@ export default function Hubert() {
                     {chatMessage.text}
                   </div>
                 ))}
+
                 {(isThinking || isGreetingMessage) && (
                   <div className={styles.thinkingMessage}>
                     <span></span>
@@ -263,6 +301,7 @@ export default function Hubert() {
                   </div>
                 )}
               </div>
+
               <div className={styles.chatInputWrapper}>
                 <textarea
                   className={styles.chatInput}
@@ -280,7 +319,10 @@ export default function Hubert() {
                     const textarea = e.currentTarget;
 
                     textarea.style.height = "auto";
-                    textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+                    textarea.style.height = `${Math.min(
+                      textarea.scrollHeight,
+                      120
+                    )}px`;
                   }}
                 />
 
@@ -289,6 +331,7 @@ export default function Hubert() {
                   className={styles.sendButton}
                   aria-label="Skicka meddelande"
                   onClick={sendMessage}
+                  disabled={isThinking}
                 >
                   ↑
                 </button>
