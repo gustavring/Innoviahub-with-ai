@@ -12,13 +12,17 @@ public class HubertController : ControllerBase
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly HubertService _hubertService;
+    private readonly HubertBookingParserService _bookingParser;
+    
 
     public HubertController(
         IHttpClientFactory httpClientFactory,
-        HubertService hubertService)
+        HubertService hubertService,
+        HubertBookingParserService bookingParser)
     {
         _httpClientFactory = httpClientFactory;
         _hubertService = hubertService;
+        _bookingParser = bookingParser;
     }
 
     [HttpPost]
@@ -42,6 +46,8 @@ public class HubertController : ControllerBase
                 .Select(group =>
                     $"{group.Key}: {group.Count()} stycken")
         );
+
+        var swedishNow = _hubertService.GetCurrentSwedishTime();
 
         var body = new
         {
@@ -148,6 +154,28 @@ public class HubertController : ControllerBase
 
                 Om information saknas, var kort och tydlig.
                 Ge aldrig ett påhittat svar för att låta säker.
+
+
+                DATUM OCH TID
+                Dagens datum och aktuell tid i Sverige:
+                {swedishNow:yyyy-MM-dd HH:mm}
+
+                Använd detta datum som utgångspunkt när användaren
+                pratar om dagar, veckor och tider.
+
+                Tolka relativa datum utifrån svensk kalender.
+                Kontrollera att veckodag och datum stämmer överens.
+
+                Om användaren anger starttid och längd,
+                räkna ut sluttiden.
+
+                Bokningsbara tider är 07:00–24:00.
+
+                Kontrollera faktisk tillgänglighet innan du
+                påstår att en tid är ledig.
+
+                Genomför aldrig en bokning utan användarens
+                bekräftelse och ett lyckat svar från systemet.
                 """,
 
             input = request.Message
@@ -182,6 +210,68 @@ public class HubertController : ControllerBase
         return Ok(new HubertResponseDto
         {
             Message = message ?? ""
+        });
+    }
+
+    [HttpPost("parse-booking")]
+    public async Task<IActionResult> ParseBooking(
+        [FromBody] HubertRequestDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Message))
+        {
+            return BadRequest("Meddelandet får inte vara tomt.");
+        }
+
+        var bookingRequest = await _bookingParser.ParseAsync(request.Message);
+
+        if (bookingRequest == null)
+        {
+            return StatusCode(
+                502,
+                "Kunde inte tolka bokningsönskemålet."
+            );
+        }
+
+        return Ok(bookingRequest);
+    }
+
+    [HttpPost("check-booking")]
+    public async Task<IActionResult> CheckBooking(
+        [FromBody] HubertRequestDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Message))
+        {
+            return BadRequest("Meddelandet får inte vara tomt.");
+        }
+
+        var bookingRequest = await _bookingParser.ParseAsync(request.Message);
+
+        if (bookingRequest == null)
+        {
+            return StatusCode(502, "Kunde inte tolka bokningsönskemålet.");
+        }
+
+        if (bookingRequest.ResourceType == null ||
+            bookingRequest.Date == null ||
+            bookingRequest.StartTime == null ||
+            bookingRequest.DurationMinutes == null ||
+            bookingRequest.DurationMinutes <= 0)
+        {
+            return Ok(new
+            {
+                Complete = false,
+                BookingRequest = bookingRequest,
+                Message = "Det saknas uppgifter för att kontrollera tillgängligheten."
+            });
+        }
+
+        var isAvailable = await _hubertService.IsBookingAvailableAsync(bookingRequest);
+
+        return Ok(new
+        {
+            Complete = true,
+            IsAvailable = isAvailable,
+            BookingRequest = bookingRequest
         });
     }
 }

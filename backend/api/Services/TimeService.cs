@@ -39,5 +39,13 @@ namespace api.Services
                 _swedishTimeZone
             );
         }
+
+        public DateTime GetCurrentSwedishTime()
+        {
+            return TimeZoneInfo.ConvertTimeFromUtc(
+                DateTime.UtcNow,
+                _swedishTimeZone
+            );
+        }
     }
 }
