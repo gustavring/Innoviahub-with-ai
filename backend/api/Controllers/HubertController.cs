@@ -1,6 +1,5 @@
+
 using Microsoft.AspNetCore.Mvc;
-using System.Net.Http.Json;
-using System.Text.Json;
 using api.Dtos.HubertDtos;
 using api.Services;
 
@@ -10,268 +9,44 @@ namespace api.Controllers;
 [Route("api/[controller]")]
 public class HubertController : ControllerBase
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly HubertService _hubertService;
-    private readonly HubertBookingParserService _bookingParser;
-    
+    private readonly HubertChatService _hubertChatService;
 
-    public HubertController(
-        IHttpClientFactory httpClientFactory,
-        HubertService hubertService,
-        HubertBookingParserService bookingParser)
+    public HubertController(HubertChatService hubertChatService)
     {
-        _httpClientFactory = httpClientFactory;
-        _hubertService = hubertService;
-        _bookingParser = bookingParser;
+        _hubertChatService = hubertChatService;
     }
 
     [HttpPost]
-    public async Task<IActionResult> Chat([FromBody] HubertRequestDto request)
-    {
-        if (string.IsNullOrWhiteSpace(request.Message))
-        {
-            return BadRequest("Meddelandet får inte vara tomt.");
-        }
-
-        var client = _httpClientFactory.CreateClient("openai");
-
-        /* hämta resurserna via HubertService */
-        var resources = await _hubertService.GetResourcesAsync();
-
-        /* skapa en text med den riktiga resursinformationen */
-        var resourceInfo = string.Join(
-            "\n",
-            resources
-                .GroupBy(resource => resource.ResourceType)
-                .Select(group =>
-                    $"{group.Key}: {group.Count()} stycken")
-        );
-
-        var swedishNow = _hubertService.GetCurrentSwedishTime();
-
-        var body = new
-        {
-            model = "gpt-5-mini",
-
-            instructions = $"""
-                Du är Hubert, InnoviaHubs personliga digitala assistent.
-
-                Du är en naturlig del av InnoviaHub och hjälper besökare
-                och medlemmar med frågor om lokaler, resurser och bokningar.
-
-                PERSONLIGHET OCH TON
-                Du är kunnig, trevlig, hjälpsam och professionell.
-                Skriv som en vänlig medarbetare på InnoviaHub.
-                Var avslappnad och personlig utan att bli överdrivet entusiastisk.
-
-                Svara naturligt och självsäkert när du har tillförlitlig information.
-                Undvik robotliknande formuleringar, onödiga förklaringar
-                och upprepningar.
-
-                Använd ett enkelt och vardagligt språk.
-                Anpassa svarets längd efter frågan.
-                Enkla frågor besvaras kort, medan större frågor kan
-                få ett mer utförligt och strukturerat svar.
-
-                Svara på svenska när användaren skriver på svenska.
-
-                DIN ROLL
-                Du hjälper användare att förstå vilka resurser som finns
-                på InnoviaHub och vägleder dem kring bokningar.
-
-                Om någon frågar vem du är, presentera dig kort och naturligt
-                som Hubert, InnoviaHubs digitala assistent.
-
-                Håll dig till frågor som rör InnoviaHub och dess verksamhet.
-                Vid frågor utanför området, styr vänligt tillbaka samtalet.
-
-                AKTUELL RESURSINFORMATION
-                Följande resurser finns på InnoviaHub:
-
-                {resourceInfo}
-
-                Använd denna information som faktaunderlag när du svarar
-                på frågor om resurser och antal.
-
-                PRESENTATION AV RESURSER
-                Presentera informationen på ett tydligt och lättläst sätt.
-
-                När användaren frågar vilka resurser som finns,
-                ge en snygg och överskådlig sammanställning.
-
-                Använd gärna punktlistor när flera resurstyper presenteras.
-                Skriv antalet före resursens namn.
-
-                Använd naturliga benämningar:
-                - Skrivbord
-                - Mötesrum
-                - VR-headset
-                - AI-server
-
-                Om användaren frågar om en specifik resurstyp,
-                svara direkt på den frågan utan att lista allt annat.
-
-                Om användaren frågar efter det totala antalet resurser,
-                summera antalen från resursinformationen.
-
-                Använd korrekt singular och plural.
-                Skriv exempelvis "1 AI-server" och "4 mötesrum".
-
-                Undvik tekniska termer som resurs-ID, databas,
-                API, DTO och backend i vanliga svar.
-
-                SAMTALSSTIL
-                Svara på det användaren faktiskt frågar om.
-                Undvik att ge mer information än vad som behövs.
-
-                Ställ gärna en kort följdfråga när det hjälper
-                användaren vidare, men inte efter varje svar.
-
-                Upprepa inte samma hälsningsfras eller avslutning
-                i varje meddelande.
-
-                Använd punktlistor när de gör informationen tydligare,
-                men skriv vanliga frågor och svar som naturlig text.
-
-                TILLFÖRLITLIGHET
-                All information om InnoviaHubs resurser ska bygga
-                på det faktaunderlag du fått.
-
-                Hitta aldrig på antal, resurser, öppettider,
-                bokningsregler eller annan information om InnoviaHub.
-
-                Skilj mellan hur många resurser som finns och
-                hur många som är tillgängliga för bokning.
-
-                Om en användare frågar om tillgänglighet eller vill
-                genomföra en bokning utan att verifierad information
-                finns, erbjud hjälp vidare utan att påstå att
-                något är ledigt eller att en bokning har genomförts.
-
-                Prata inte om din tekniska implementation eller
-                vilka systemfunktioner du har tillgång till,
-                om användaren inte uttryckligen frågar om det.
-
-                Om information saknas, var kort och tydlig.
-                Ge aldrig ett påhittat svar för att låta säker.
-
-
-                DATUM OCH TID
-                Dagens datum och aktuell tid i Sverige:
-                {swedishNow:yyyy-MM-dd HH:mm}
-
-                Använd detta datum som utgångspunkt när användaren
-                pratar om dagar, veckor och tider.
-
-                Tolka relativa datum utifrån svensk kalender.
-                Kontrollera att veckodag och datum stämmer överens.
-
-                Om användaren anger starttid och längd,
-                räkna ut sluttiden.
-
-                Bokningsbara tider är 07:00–24:00.
-
-                Kontrollera faktisk tillgänglighet innan du
-                påstår att en tid är ledig.
-
-                Genomför aldrig en bokning utan användarens
-                bekräftelse och ett lyckat svar från systemet.
-                """,
-
-            input = request.Message
-        };
-
-        var response = await client.PostAsJsonAsync("", body);
-        if (!response.IsSuccessStatusCode)
-        {
-            return StatusCode(502, "Kunde inte få svar från AI-tjänsten.");
-        }
-
-        var result = await response.Content.ReadAsStringAsync();
-
-        using var json = JsonDocument.Parse(result);
-
-        var output = json.RootElement.GetProperty("output");
-
-        string? message = null;
-
-        foreach (var item in output.EnumerateArray())
-        {
-            if (item.GetProperty("type").GetString() == "message")
-            {
-                message = item
-                    .GetProperty("content")[0]
-                    .GetProperty("text")
-                    .GetString();
-
-                break;
-            }
-        }
-        return Ok(new HubertResponseDto
-        {
-            Message = message ?? ""
-        });
-    }
-
-    [HttpPost("parse-booking")]
-    public async Task<IActionResult> ParseBooking(
+    public async Task<IActionResult> Chat(
         [FromBody] HubertRequestDto request)
     {
-        if (string.IsNullOrWhiteSpace(request.Message))
+        if (request == null ||
+            string.IsNullOrWhiteSpace(request.Message))
         {
             return BadRequest("Meddelandet får inte vara tomt.");
         }
 
-        var bookingRequest = await _bookingParser.ParseAsync(request.Message);
-
-        if (bookingRequest == null)
+        try
         {
-            return StatusCode(
-                502,
-                "Kunde inte tolka bokningsönskemålet."
+            var result = await _hubertChatService.GetResponseAsync(
+                request.Message,
+                request.PreviousResponseId
             );
-        }
 
-        return Ok(bookingRequest);
-    }
-
-    [HttpPost("check-booking")]
-    public async Task<IActionResult> CheckBooking(
-        [FromBody] HubertRequestDto request)
-    {
-        if (string.IsNullOrWhiteSpace(request.Message))
-        {
-            return BadRequest("Meddelandet får inte vara tomt.");
-        }
-
-        var bookingRequest = await _bookingParser.ParseAsync(request.Message);
-
-        if (bookingRequest == null)
-        {
-            return StatusCode(502, "Kunde inte tolka bokningsönskemålet.");
-        }
-
-        if (bookingRequest.ResourceType == null ||
-            bookingRequest.Date == null ||
-            bookingRequest.StartTime == null ||
-            bookingRequest.DurationMinutes == null ||
-            bookingRequest.DurationMinutes <= 0)
-        {
-            return Ok(new
+            return Ok(new HubertResponseDto
             {
-                Complete = false,
-                BookingRequest = bookingRequest,
-                Message = "Det saknas uppgifter för att kontrollera tillgängligheten."
+                Message = result.Message,
+                ResponseId = result.ResponseId
             });
         }
-
-        var isAvailable = await _hubertService.IsBookingAvailableAsync(bookingRequest);
-
-        return Ok(new
+        catch (Exception ex)
         {
-            Complete = true,
-            IsAvailable = isAvailable,
-            BookingRequest = bookingRequest
-        });
+            Console.WriteLine($"Hubert-fel: {ex}");
+
+            return StatusCode(
+                502,
+                "Hubert kunde inte behandla meddelandet."
+            );
+        }
     }
 }
