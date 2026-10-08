@@ -1,7 +1,8 @@
-
 using Microsoft.AspNetCore.Mvc;
 using api.Dtos.HubertDtos;
 using api.Services;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace api.Controllers;
 
@@ -17,6 +18,7 @@ public class HubertController : ControllerBase
     }
 
     [HttpPost]
+    [AllowAnonymous]
     public async Task<IActionResult> Chat(
         [FromBody] HubertRequestDto request)
     {
@@ -28,9 +30,14 @@ public class HubertController : ControllerBase
 
         try
         {
+            var userId = User.Identity?.IsAuthenticated == true
+                ? User.FindFirstValue(ClaimTypes.NameIdentifier)
+                : null;
+
             var result = await _hubertChatService.GetResponseAsync(
                 request.Message,
-                request.PreviousResponseId
+                request.PreviousResponseId,
+                userId
             );
 
             return Ok(new HubertResponseDto
@@ -50,3 +57,5 @@ public class HubertController : ControllerBase
         }
     }
 }
+
+
