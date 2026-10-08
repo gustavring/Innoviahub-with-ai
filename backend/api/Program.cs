@@ -66,6 +66,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<AvailabilityService>();
 builder.Services.AddScoped<TimeService>();
+builder.Services.AddScoped<HubertService>();
 
 builder.Services
     .AddIdentity<User, IdentityRole>()

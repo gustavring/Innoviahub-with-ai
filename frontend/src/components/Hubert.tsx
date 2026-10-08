@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import styles from "./css/Hubert.module.css";
 import hubertIcon from "../assets/Hubert/HubertOpenEyes.svg";
 import hubertBlink from "../assets/Hubert/HubertClosedEyes.svg";
 import hubertHappy from "../assets/Hubert/HubertHappyEyes.svg";
+import hubertThinking from "../assets/Hubert/HubertLookDownEyes.svg";
 
 export default function Hubert() {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,6 +13,16 @@ export default function Hubert() {
   const [isButtonBlinking, setIsButtonBlinking] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [isGreeting, setIsGreeting] = useState(false);
+  const [isGreetingMessage, setIsGreetingMessage] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
+
+  const [message, setMessage] = useState("");
+
+  const [messages, setMessages] = useState<
+    { sender: "user" | "hubert"; text: string }[]
+  >([]);
+
+  const chatAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -43,7 +54,7 @@ export default function Hubert() {
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || isGreeting) {
+    if (!isOpen || isGreeting || isThinking) {
       return;
     }
 
@@ -70,7 +81,18 @@ export default function Hubert() {
       clearTimeout(blinkDuration);
       setIsBlinking(false);
     };
-  }, [isOpen, isGreeting]);
+  }, [isOpen, isGreeting, isThinking]);
+
+  useEffect(() => {
+    const chatArea = chatAreaRef.current;
+
+    if (chatArea) {
+      chatArea.scrollTo({
+        top: chatArea.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  }, [messages, isThinking]);
 
   const buttonHubertIcon = isHovering
     ? hubertHappy
@@ -85,6 +107,21 @@ export default function Hubert() {
     setTimeout(() => {
       setIsGreeting(false);
     }, 700);
+
+    if (messages.length === 0) {
+      setIsGreetingMessage(true);
+
+      setTimeout(() => {
+        setIsGreetingMessage(false);
+
+        setMessages([
+          {
+            sender: "hubert",
+            text: "Hej, Hubert här. Vad kan jag hjälpa dig med idag?",
+          },
+        ]);
+      }, 1200);
+    }
   }
 
   function closeHubert() {
@@ -96,6 +133,57 @@ export default function Hubert() {
     }, 300);
   }
 
+  async function sendMessage() {
+    if (!message.trim()) {
+      return;
+    }
+
+    const userMessage = message;
+
+    setMessages((prev) => [...prev, { sender: "user", text: userMessage }]);
+
+    setMessage("");
+
+    /* Hubert börjar tänka */
+    setIsThinking(true);
+
+    try {
+      const response = await fetch("http://localhost:5197/api/Hubert", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: userMessage,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+
+        throw new Error(`Hubert API-fel (${response.status}): ${errorText}`);
+      }
+
+      const data = await response.json();
+
+      setMessages((prev) => [
+        ...prev,
+        { sender: "hubert", text: data.message },
+      ]);
+
+      setIsThinking(false);
+      setIsGreeting(true);
+
+      /* efter 700 ms går Hubert tillbaka till vanligt läge */
+      setTimeout(() => {
+        setIsGreeting(false);
+      }, 700);
+    } catch (error) {
+      console.error(error);
+
+      setIsThinking(false);
+    }
+  }
   return (
     <>
       <button
@@ -138,33 +226,56 @@ export default function Hubert() {
             <div className={styles.windowHeader}>
               <img
                 src={
-                  isGreeting
-                    ? hubertHappy
-                    : isBlinking
-                      ? hubertBlink
-                      : hubertIcon
+                  isThinking
+                    ? hubertThinking
+                    : isGreeting
+                      ? hubertHappy
+                      : isBlinking
+                        ? hubertBlink
+                        : hubertIcon
                 }
                 alt="Hubert"
                 className={`${styles.windowHubertIcon} ${
                   isGreeting ? styles.windowHubertGreeting : ""
                 }`}
               />
-
-              <div className={styles.talkingBoxHubert}>
-                <p>Hej,</p>
-                <p>Hubert här!</p>
-              </div>
             </div>
 
             <div className={styles.chatAndSendWrapper}>
-              <div className={styles.chatArea}>
-                {/* OBS: Chatten fixas senare */}
+              <div className={styles.chatArea} ref={chatAreaRef}>
+                {messages.map((chatMessage, index) => (
+                  <div
+                    key={index}
+                    className={
+                      chatMessage.sender === "user"
+                        ? styles.userMessage
+                        : styles.hubertMessage
+                    }
+                  >
+                    {chatMessage.text}
+                  </div>
+                ))}
+                {(isThinking || isGreetingMessage) && (
+                  <div className={styles.thinkingMessage}>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                )}
               </div>
               <div className={styles.chatInputWrapper}>
                 <textarea
                   className={styles.chatInput}
                   placeholder="Skriv till Hubert..."
                   rows={1}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
                   onInput={(e) => {
                     const textarea = e.currentTarget;
 
@@ -177,6 +288,7 @@ export default function Hubert() {
                   type="button"
                   className={styles.sendButton}
                   aria-label="Skicka meddelande"
+                  onClick={sendMessage}
                 >
                   ↑
                 </button>
