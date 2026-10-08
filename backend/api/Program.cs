@@ -68,6 +68,7 @@ builder.Services.AddScoped<AvailabilityService>();
 builder.Services.AddScoped<TimeService>();
 builder.Services.AddScoped<HubertService>();
 builder.Services.AddScoped<HubertChatService>();
+builder.Services.AddSingleton<HubertPendingBookingService>();
 
 builder.Services
     .AddIdentity<User, IdentityRole>()

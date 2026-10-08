@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import styles from "./css/Hubert.module.css";
 import hubertIcon from "../assets/Hubert/HubertOpenEyes.svg";
@@ -154,19 +153,19 @@ export default function Hubert() {
 
     const userMessage = message.trim();
 
-    setMessages((prev) => [
-      ...prev,
-      { sender: "user", text: userMessage },
-    ]);
+    setMessages((prev) => [...prev, { sender: "user", text: userMessage }]);
 
     setMessage("");
     setIsThinking(true);
 
     try {
+      const token = localStorage.getItem("token");
+
       const response = await fetch("http://localhost:5197/api/Hubert", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           message: userMessage,
@@ -177,9 +176,7 @@ export default function Hubert() {
       if (!response.ok) {
         const errorText = await response.text();
 
-        throw new Error(
-          `Hubert API-fel (${response.status}): ${errorText}`
-        );
+        throw new Error(`Hubert API-fel (${response.status}): ${errorText}`);
       }
 
       const data: HubertApiResponse = await response.json();
@@ -321,7 +318,7 @@ export default function Hubert() {
                     textarea.style.height = "auto";
                     textarea.style.height = `${Math.min(
                       textarea.scrollHeight,
-                      120
+                      120,
                     )}px`;
                   }}
                 />

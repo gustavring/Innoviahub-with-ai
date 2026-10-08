@@ -1,24 +1,32 @@
-
 using api.Dtos.HubertDtos;
 using api.Dtos.ResourceDtos;
 using api.Interfaces;
+using api.Models;
+using Microsoft.AspNetCore.SignalR;
+using api.Hubs;
 
 namespace api.Services;
 
 public class HubertService
 {
     private readonly IResourceRepository _resourceRepository;
+    private readonly IBookingRepository _bookingRepository;
     private readonly TimeService _timeService;
     private readonly AvailabilityService _availabilityService;
+    private readonly IHubContext<BookingHub> _hubContext;
 
     public HubertService(
         IResourceRepository resourceRepository,
+        IBookingRepository bookingRepository,
         TimeService timeService,
-        AvailabilityService availabilityService)
+        AvailabilityService availabilityService,
+        IHubContext<BookingHub> hubContext)
     {
         _resourceRepository = resourceRepository;
+        _bookingRepository = bookingRepository;
         _timeService = timeService;
         _availabilityService = availabilityService;
+        _hubContext = hubContext;
     }
 
     public DateTime GetCurrentSwedishTime()
@@ -75,4 +83,79 @@ public class HubertService
             ResourceType = resource.ResourceType.ToString()
         }).ToList();
     }
+
+    public async Task<Booking?> CreateBookingAsync(
+        HubertBookingRequestDto request,
+        string? userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return null;
+        }
+
+        if (request.ResourceType == null ||
+            request.Date == null ||
+            request.StartTime == null ||
+            request.DurationMinutes == null ||
+            request.DurationMinutes <= 0)
+        {
+            return null;
+        }
+
+        var startLocal = request.Date.Value.ToDateTime(
+            request.StartTime.Value);
+
+        var endLocal = startLocal.AddMinutes(
+            request.DurationMinutes.Value);
+
+        if (startLocal < _timeService.GetCurrentSwedishTime() ||
+            startLocal.TimeOfDay < TimeSpan.FromHours(7) ||
+            endLocal > startLocal.Date.AddDays(1))
+        {
+            return null;
+        }
+
+        var startUtc = _timeService.ToUtc(startLocal);
+        var endUtc = _timeService.ToUtc(endLocal);
+
+        var resources = await _resourceRepository.GetByTypeAsync(
+            request.ResourceType.Value);
+
+        foreach (var resource in resources)
+        {
+            var isAvailable =
+                await _bookingRepository.IsResourceAvailableAsync(
+                    startUtc,
+                    endUtc,
+                    resource.ResourceId);
+
+            if (!isAvailable)
+            {
+                continue;
+            }
+
+            var booking = new Booking
+            {
+                ResourceId = resource.ResourceId,
+                UserId = userId,
+                StartTime = startUtc,
+                EndTime = endUtc
+            };
+
+            var createdBooking =
+                await _bookingRepository.CreateBookingAsync(booking);
+
+            if (createdBooking == null)
+            {
+                continue;
+            }
+
+            await _hubContext.Clients.All.SendAsync("BookingsChanged");
+
+            return createdBooking;
+        }
+
+        return null;
+    }
 }
+
