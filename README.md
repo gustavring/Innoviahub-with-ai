@@ -2,114 +2,107 @@
 
 Innovia Hub är en webbapplikation för ett coworking- och forskningscenter där användare kan boka resurser och se deras tillgänglighet.
 
-Projektet består av:
+Projektet innehåller även **Hubert**, en AI-assistent som hjälper användare med frågor om resurser, tillgänglighet och bokningar.
+
+Projektet finns på GitHub: [Innoviahub-with-ai](https://github.com/gustavring/Innoviahub-with-ai), branch `dev-2.0`.
+
+## Tekniker
 
 - **Backend:** ASP.NET Core Web API (.NET 8)
-- **Frontend:** React + TypeScript + Vite
-- **Databas:** PostgreSQL
-- **Realtidskommunikation:** SignalR
-- **Autentisering:** ASP.NET Core Identity + JWT
-- **Databasåtkomst:** Entity Framework Core
-- **AI-assistent:** Hubert, byggd med OpenAI API
-- **Docker:** PostgreSQL körs lokalt i Docker
+- **Frontend:** React, TypeScript och Vite
+- **Databas:** PostgreSQL och Entity Framework Core
+- **Autentisering:** ASP.NET Core Identity och JWT
+- **Realtid:** SignalR
+- **AI:** OpenAI API (Hubert)
+- **Docker:** Backend, frontend och PostgreSQL
 
 ## Kom igång
 
-### 1. Klona `dev`
+Du kan starta hela projektet med Docker eller köra backend och frontend separat för lokal utveckling.
 
-Klona projektets `dev`-branch:
-
-```powershell
-git clone -b dev https://github.com/Innovia-3/Innovia-3.git
-cd Innovia-3
-```
-
-### 2. Starta PostgreSQL
-
-Se till att Docker Desktop är startat.
-
-Kör sedan från projektets rotmapp:
+### 1. Klona projektet
 
 ```powershell
-docker compose up -d
+git clone -b dev-2.0 https://github.com/gustavring/Innoviahub-with-ai.git
+cd Innoviahub-with-ai
 ```
 
-Kontrollera att PostgreSQL körs:
+### 2. Konfigurera miljövariabler
+
+Kopiera `.env.example` till `.env` i projektets rotmapp:
 
 ```powershell
-docker compose ps
+Copy-Item .env.example .env
 ```
 
-Containern `innoviahub-postgres` ska ha status `Up`.
-
-### 3. Konfigurera JWT
-
-Gå till backend:
-
-```powershell
-cd backend\api
-```
-
-Projektet använder .NET User Secrets för JWT-nyckeln:
-
-```powershell
-dotnet user-secrets set "Jwt:Key" "DIN_JWT_NYCKEL"
-```
-
-JWT-nyckeln för projektet tillhandahålls separat.
-
-### 4. Konfigurera OpenAI API-nyckel för Hubert
-
-Hubert använder OpenAI:s Responses API med modellen `gpt-5-mini` för att tolka användarens frågor och använda funktioner i projektets backend.
-
-För att Hubert ska fungera behöver du en OpenAI API-nyckel.
-
-1. Gå till https://platform.openai.com/api-keys och skapa en API-nyckel.
-2. I projektets rotmapp finns en fil som heter `.env.example`. Kopiera filen och döp kopian till `.env`.
-3. Öppna `.env` och ersätt platshållarna med dina egna värden.
-4. Lägg in din OpenAI API-nyckel vid `AI_API_KEY`:
+Öppna `.env` och fyll i dina värden:
 
 ```dotenv
+JWT_KEY=ange-en-lang-slumpmassig-hemlig-nyckel-har
+POSTGRES_DB=innoviahub
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=ditt_databaslosenord
 AI_API_KEY=din_openai_api_nyckel
 ```
 
-Fyll även i de övriga miljövariablerna för JWT och PostgreSQL enligt projektets konfiguration.
+Använd en lång, slumpmässigt genererad JWT-nyckel, helst minst 32 byte.
+
+Du kan skapa en OpenAI API-nyckel på https://platform.openai.com/api-keys.
 
 **Viktigt:** `.env` innehåller känsliga uppgifter och ska inte laddas upp till GitHub.
 
-Observera att miljövariablerna måste vara tillgängliga för backend när den startas. ASP.NET Core läser inte automatiskt in en `.env`-fil vid `dotnet run`, så projektet måste ha stöd för detta eller få variablerna via startmiljön.
+### 3. Starta med Docker (rekommenderas)
 
-OpenAI API kan medföra kostnader beroende på användning.
+Se till att Docker Desktop är igång.
 
-### 5. Uppdatera databasen
-
-På en ny databas behöver EF Core-migrationerna köras:
+Kör från projektets rotmapp:
 
 ```powershell
-dotnet ef database update
+docker compose up -d --build
 ```
 
-Detta skapar databastabellerna och lägger in projektets seedade data.
+Detta startar PostgreSQL, backend och frontend. Databasmigrationerna körs automatiskt när backend startar.
 
-### 6. Starta backend
+Öppna webbapplikationen på:
 
-Från `backend\api`:
+**http://localhost:3000**
+
+Backend körs på `http://localhost:5197`.
+
+För att stoppa projektet:
 
 ```powershell
+docker compose down
+```
+
+### 4. Alternativ: Kör backend och frontend separat
+
+Vid lokal utveckling kan du köra PostgreSQL i Docker och starta backend och frontend var för sig.
+
+**Starta PostgreSQL** från projektets rotmapp:
+
+```powershell
+docker compose up -d postgres
+```
+
+**Starta backend** i en terminal från projektets rotmapp:
+
+```powershell
+cd backend\api
+dotnet user-secrets set "Jwt:Key" "DIN_JWT_NYCKEL"
+$env:AI_API_KEY = "DIN_OPENAI_API_NYCKEL"
 dotnet run
 ```
 
-Backend körs på:
+Använd samma säkra JWT-nyckel som du har angett i `.env`.
 
-```text
-http://localhost:5197
-```
+Backend körs normalt på `http://localhost:5197`.
 
-Låt terminalen vara igång.
+Backend använder `appsettings.json` för databasanslutningen och JWT-inställningarna.
 
-### 7. Starta frontend
+**Viktigt:** Vid lokal körning måste databasuppgifterna i `appsettings.json` stämma med uppgifterna i `.env`. Annars kan backend inte ansluta till PostgreSQL.
 
-Öppna en ny terminal i projektets rotmapp och gå till frontend:
+**Starta frontend** i en ny terminal från projektets rotmapp:
 
 ```powershell
 cd frontend
@@ -117,41 +110,29 @@ npm install
 npm run dev
 ```
 
-Frontend körs på:
+Öppna webbapplikationen på:
 
-```text
-http://localhost:5173
-```
+**http://localhost:5173**
 
-Öppna adressen i webbläsaren.
+Observera att `dotnet run` inte automatiskt läser `.env`. Därför anges JWT-nyckeln och OpenAI API-nyckeln separat vid lokal körning.
 
-## Starta projektet efter första installationen
+## Starta projektet nästa gång
 
-När databasen och miljövariablerna redan är konfigurerade behöver migrationerna och `npm install` normalt inte köras igen.
-
-Starta PostgreSQL från projektets rotmapp:
+**Med Docker**, från projektets rotmapp:
 
 ```powershell
 docker compose up -d
 ```
 
-Starta backend:
+Öppna `http://localhost:3000`.
 
-```powershell
-cd backend\api
-dotnet run
-```
+**Vid lokal utveckling:** Starta PostgreSQL med Docker, backend med `dotnet run` och frontend med `npm run dev`. Se till att `AI_API_KEY` är tillgänglig i backendterminalen.
 
-Starta frontend i en separat terminal från projektets rotmapp:
+Du behöver normalt inte köra `npm install` igen. Databasmigrationerna körs automatiskt vid backendstart.
 
-```powershell
-cd frontend
-npm run dev
-```
+## Om systemet
 
-## Kort om systemet
-
-Innovia Hub hanterar fyra typer av bokningsbara resurser:
+Innovia Hub har fyra typer av bokningsbara resurser:
 
 | Resurs | Antal |
 |---|---:|
@@ -160,77 +141,70 @@ Innovia Hub hanterar fyra typer av bokningsbara resurser:
 | VR-headset | 4 |
 | AI-server | 1 |
 
-Tillgängligheten beräknas utifrån befintliga bokningar och valt tidsintervall.
+Systemet använder JWT för autentisering och SignalR för att uppdatera bokningar i realtid.
 
-SignalR används för att uppdatera bokningsinformation i realtid. När en bokning skapas eller tas bort skickar backend eventet `BookingsChanged` till anslutna klienter.
-
-Användare autentiseras med ASP.NET Core Identity och JWT. Systemet har rollerna `User` och `Admin`.
+Det finns två roller: `User` och `Admin`.
 
 ## Hubert – AI-assistent
 
-Hubert är Innovia Hubs AI-assistent och använder OpenAI:s Responses API med function calling för att kommunicera med projektets befintliga backend.
+Hubert använder OpenAI:s Responses API med modellen `gpt-5-mini`.
 
 Med Hubert kan användare:
 
 - Ställa frågor om resurser och tillgänglighet.
-- Kontrollera vilka resurser som är lediga eller upptagna.
+- Kontrollera vilka resurser som är lediga.
 - Boka resurser efter inloggning och bekräftelse.
 - Se sina egna bokningar när de är inloggade.
 - Som administratör se alla användares bokningar.
 
-Hubert använder befintliga services och repositories för att hämta information och hantera bokningar. AI:n tolkar användarens frågor, medan backend ansvarar för tillgänglighet, bokningar och behörighetskontroller.
+Hubert tolkar användarens frågor, medan backend kontrollerar tillgänglighet, skapar bokningar och hanterar behörigheter.
 
-För att använda Hubert krävs en giltig OpenAI API-nyckel enligt steg 4.
+För att Hubert ska fungera behövs en giltig OpenAI API-nyckel.
 
 ## Vanliga problem
 
-### Databastabeller saknas
+**Docker startar inte**
 
-Om backend visar följande fel:
-
-```text
-relation "AspNetRoles" does not exist
-```
-
-har migrationerna troligen inte körts. Kör:
+Kontrollera att Docker Desktop är igång och kör:
 
 ```powershell
-cd backend\api
-dotnet ef database update
+docker compose up -d --build
 ```
 
-### PostgreSQL kan inte nås
+Visa loggarna vid behov:
 
-Om backend inte får kontakt med PostgreSQL, kontrollera att Docker är igång:
+```powershell
+docker compose logs
+```
+
+**Databasen fungerar inte**
+
+Kontrollera att PostgreSQL körs:
 
 ```powershell
 docker compose ps
 ```
 
-Starta databasen vid behov:
+Kontrollera även databasuppgifterna i `.env` och, vid lokal körning, i `appsettings.json`.
+
+**Hubert fungerar inte**
+
+Kontrollera att `AI_API_KEY` är korrekt, att backend har tillgång till nyckeln och att OpenAI-kontot har API-åtkomst.
+
+Om du ändrat `.env` vid Docker-körning kan du behöva återskapa containrarna:
 
 ```powershell
-docker compose up -d
+docker compose up -d --force-recreate
 ```
 
-### Frontend saknar dependencies
+**Frontend startar inte lokalt**
 
-Om frontend inte startar på grund av saknade paket, kör:
+Gå till `frontend` och kör:
 
 ```powershell
-cd frontend
 npm install
 ```
 
-### Hubert fungerar inte
+---
 
-Kontrollera att:
-
-- Du har lagt in en giltig OpenAI API-nyckel i `AI_API_KEY`.
-- Miljövariabeln är tillgänglig för backend.
-- Backend är igång.
-- OpenAI-kontot har tillgång till API:t och tillräcklig budget.
-
-Om du har ändrat `.env` kan du behöva starta om berörda tjänster för att ändringarna ska börja gälla.
-
-Dela aldrig API-nycklar, lösenord eller andra hemligheter på GitHub, i felrapporter eller i skärmbilder.
+Dela aldrig API-nycklar, lösenord eller andra hemligheter på GitHub.
