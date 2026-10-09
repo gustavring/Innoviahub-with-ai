@@ -34,7 +34,7 @@ Kör sedan från projektets rotmapp:
 docker compose up -d
 ```
 
-Kontrollera att PostgreSQL kör:
+Kontrollera att PostgreSQL körs:
 
 ```powershell
 docker compose ps
@@ -60,31 +60,24 @@ JWT-nyckeln för projektet tillhandahålls separat.
 
 ### 4. Konfigurera OpenAI API-nyckel för Hubert
 
-Hubert använder OpenAI API för att förstå användarens frågor och kommunicera med backend.
+Hubert använder OpenAI:s Responses API med modellen `gpt-5-mini` för att tolka användarens frågor och använda funktioner i projektets backend.
 
-För att Hubert ska fungera behöver du en egen OpenAI API-nyckel.
+För att Hubert ska fungera behöver du en OpenAI API-nyckel.
 
-1. Gå till https://platform.openai.com/api-keys
-2. Skapa en API-nyckel.
-3. Lägg till nyckeln i backend.
+1. Gå till https://platform.openai.com/api-keys och skapa en API-nyckel.
+2. I projektets rotmapp finns en fil som heter `.env.example`. Kopiera filen och döp kopian till `.env`.
+3. Öppna `.env` och ersätt platshållarna med dina egna värden.
+4. Lägg in din OpenAI API-nyckel vid `AI_API_KEY`:
 
-Från `backend\api`, kör:
-
-```powershell
-dotnet user-secrets set "OpenAI:ApiKey" "DIN_OPENAI_API_NYCKEL"
+```dotenv
+AI_API_KEY=din_openai_api_nyckel
 ```
 
-API-nyckeln sparas lokalt via .NET User Secrets och ska inte läggas upp på GitHub.
+Fyll även i de övriga miljövariablerna för JWT och PostgreSQL enligt projektets konfiguration.
 
-**Viktigt:** Detta förutsätter att backend är konfigurerad att läsa nyckeln från `OpenAI:ApiKey`. Om projektet använder ett annat konfigurationsnamn måste samma namn användas här.
+**Viktigt:** `.env` innehåller känsliga uppgifter och ska inte laddas upp till GitHub.
 
-Alternativt kan nyckeln anges som en miljövariabel i PowerShell:
-
-```powershell
-$env:OpenAI__ApiKey = "DIN_OPENAI_API_NYCKEL"
-```
-
-Denna miljövariabel gäller för den aktuella terminalsessionen. Starta backend från samma terminal.
+Observera att miljövariablerna måste vara tillgängliga för backend när den startas. ASP.NET Core läser inte automatiskt in en `.env`-fil vid `dotnet run`, så projektet måste ha stöd för detta eller få variablerna via startmiljön.
 
 OpenAI API kan medföra kostnader beroende på användning.
 
@@ -116,7 +109,7 @@ Låt terminalen vara igång.
 
 ### 7. Starta frontend
 
-Öppna en ny terminal och gå till frontend:
+Öppna en ny terminal i projektets rotmapp och gå till frontend:
 
 ```powershell
 cd frontend
@@ -134,9 +127,9 @@ http://localhost:5173
 
 ## Starta projektet efter första installationen
 
-När databasen redan är konfigurerad behöver migrationerna, `npm install` och konfigurationen av API-nycklar normalt inte göras igen.
+När databasen och miljövariablerna redan är konfigurerade behöver migrationerna och `npm install` normalt inte köras igen.
 
-Starta PostgreSQL från projektets rot:
+Starta PostgreSQL från projektets rotmapp:
 
 ```powershell
 docker compose up -d
@@ -149,7 +142,7 @@ cd backend\api
 dotnet run
 ```
 
-Starta frontend i en separat terminal:
+Starta frontend i en separat terminal från projektets rotmapp:
 
 ```powershell
 cd frontend
@@ -167,7 +160,7 @@ Innovia Hub hanterar fyra typer av bokningsbara resurser:
 | VR-headset | 4 |
 | AI-server | 1 |
 
-Tillgänglighet beräknas utifrån befintliga bokningar och valt tidsintervall.
+Tillgängligheten beräknas utifrån befintliga bokningar och valt tidsintervall.
 
 SignalR används för att uppdatera bokningsinformation i realtid. När en bokning skapas eller tas bort skickar backend eventet `BookingsChanged` till anslutna klienter.
 
@@ -179,27 +172,27 @@ Hubert är Innovia Hubs AI-assistent och använder OpenAI:s Responses API med fu
 
 Med Hubert kan användare:
 
-- Ställa frågor om tillgängliga resurser.
+- Ställa frågor om resurser och tillgänglighet.
 - Kontrollera vilka resurser som är lediga eller upptagna.
-- Boka resurser genom att först bekräfta bokningsförslaget.
-- Se sina egna bokningar.
+- Boka resurser efter inloggning och bekräftelse.
+- Se sina egna bokningar när de är inloggade.
 - Som administratör se alla användares bokningar.
 
-Hubert använder befintliga services och repositories för att hämta information från databasen. AI:n tolkar användarens frågor, medan backend hanterar bokningar, tillgänglighet och behörighetskontroller.
+Hubert använder befintliga services och repositories för att hämta information och hantera bokningar. AI:n tolkar användarens frågor, medan backend ansvarar för tillgänglighet, bokningar och behörighetskontroller.
 
-För att använda Hubert krävs en konfigurerad OpenAI API-nyckel enligt steg 4.
+För att använda Hubert krävs en giltig OpenAI API-nyckel enligt steg 4.
 
 ## Vanliga problem
 
 ### Databastabeller saknas
 
-Om backend ger:
+Om backend visar följande fel:
 
 ```text
 relation "AspNetRoles" does not exist
 ```
 
-har migrationerna inte körts. Kör:
+har migrationerna troligen inte körts. Kör:
 
 ```powershell
 cd backend\api
@@ -208,7 +201,7 @@ dotnet ef database update
 
 ### PostgreSQL kan inte nås
 
-Om backend inte får kontakt med PostgreSQL, kontrollera Docker:
+Om backend inte får kontakt med PostgreSQL, kontrollera att Docker är igång:
 
 ```powershell
 docker compose ps
@@ -222,7 +215,7 @@ docker compose up -d
 
 ### Frontend saknar dependencies
 
-Kör:
+Om frontend inte startar på grund av saknade paket, kör:
 
 ```powershell
 cd frontend
@@ -233,16 +226,11 @@ npm install
 
 Kontrollera att:
 
-- En giltig OpenAI API-nyckel har konfigurerats.
+- Du har lagt in en giltig OpenAI API-nyckel i `AI_API_KEY`.
+- Miljövariabeln är tillgänglig för backend.
 - Backend är igång.
-- Backend läser API-nyckeln från rätt konfigurationsnamn.
 - OpenAI-kontot har tillgång till API:t och tillräcklig budget.
 
-Om du använder .NET User Secrets kan du kontrollera vilka konfigurationsnycklar som finns genom att köra:
+Om du har ändrat `.env` kan du behöva starta om berörda tjänster för att ändringarna ska börja gälla.
 
-```powershell
-cd backend\api
-dotnet user-secrets list
-```
-
-Dela aldrig din API-nyckel eller andra hemligheter i GitHub, felrapporter eller skärmbilder.
+Dela aldrig API-nycklar, lösenord eller andra hemligheter på GitHub, i felrapporter eller i skärmbilder.
