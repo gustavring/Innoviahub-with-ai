@@ -10,6 +10,7 @@ Projektet består av:
 - **Realtidskommunikation:** SignalR
 - **Autentisering:** ASP.NET Core Identity + JWT
 - **Databasåtkomst:** Entity Framework Core
+- **AI-assistent:** Hubert, byggd med OpenAI API
 - **Docker:** PostgreSQL körs lokalt i Docker
 
 ## Kom igång
@@ -52,12 +53,42 @@ cd backend\api
 Projektet använder .NET User Secrets för JWT-nyckeln:
 
 ```powershell
-dotnet user-secrets set "Jwt:Key" "8xV!qP2mZ#7kL9wR4nT6yH1cF5sJ3dG0aB@eU7iK2pN9vX4rM6zQ1hW8fC5tY3jL"
+dotnet user-secrets set "Jwt:Key" "DIN_JWT_NYCKEL"
 ```
 
 JWT-nyckeln för projektet tillhandahålls separat.
 
-### 4. Uppdatera databasen
+### 4. Konfigurera OpenAI API-nyckel för Hubert
+
+Hubert använder OpenAI API för att förstå användarens frågor och kommunicera med backend.
+
+För att Hubert ska fungera behöver du en egen OpenAI API-nyckel.
+
+1. Gå till https://platform.openai.com/api-keys
+2. Skapa en API-nyckel.
+3. Lägg till nyckeln i backend.
+
+Från `backend\api`, kör:
+
+```powershell
+dotnet user-secrets set "OpenAI:ApiKey" "DIN_OPENAI_API_NYCKEL"
+```
+
+API-nyckeln sparas lokalt via .NET User Secrets och ska inte läggas upp på GitHub.
+
+**Viktigt:** Detta förutsätter att backend är konfigurerad att läsa nyckeln från `OpenAI:ApiKey`. Om projektet använder ett annat konfigurationsnamn måste samma namn användas här.
+
+Alternativt kan nyckeln anges som en miljövariabel i PowerShell:
+
+```powershell
+$env:OpenAI__ApiKey = "DIN_OPENAI_API_NYCKEL"
+```
+
+Denna miljövariabel gäller för den aktuella terminalsessionen. Starta backend från samma terminal.
+
+OpenAI API kan medföra kostnader beroende på användning.
+
+### 5. Uppdatera databasen
 
 På en ny databas behöver EF Core-migrationerna köras:
 
@@ -67,9 +98,9 @@ dotnet ef database update
 
 Detta skapar databastabellerna och lägger in projektets seedade data.
 
-### 5. Starta backend
+### 6. Starta backend
 
-Från `backend/api`:
+Från `backend\api`:
 
 ```powershell
 dotnet run
@@ -83,7 +114,7 @@ http://localhost:5197
 
 Låt terminalen vara igång.
 
-### 6. Starta frontend
+### 7. Starta frontend
 
 Öppna en ny terminal och gå till frontend:
 
@@ -103,7 +134,7 @@ http://localhost:5173
 
 ## Starta projektet efter första installationen
 
-När databasen redan är konfigurerad behöver migrationerna och `npm install` normalt inte köras igen.
+När databasen redan är konfigurerad behöver migrationerna, `npm install` och konfigurationen av API-nycklar normalt inte göras igen.
 
 Starta PostgreSQL från projektets rot:
 
@@ -129,12 +160,12 @@ npm run dev
 
 Innovia Hub hanterar fyra typer av bokningsbara resurser:
 
-| Resurs     | Antal |
-| ---------- | ----: |
-| Skrivbord  |    15 |
-| Mötesrum   |     4 |
-| VR-headset |     4 |
-| AI-server  |     1 |
+| Resurs | Antal |
+|---|---:|
+| Skrivbord | 15 |
+| Mötesrum | 4 |
+| VR-headset | 4 |
+| AI-server | 1 |
 
 Tillgänglighet beräknas utifrån befintliga bokningar och valt tidsintervall.
 
@@ -142,7 +173,25 @@ SignalR används för att uppdatera bokningsinformation i realtid. När en bokni
 
 Användare autentiseras med ASP.NET Core Identity och JWT. Systemet har rollerna `User` och `Admin`.
 
+## Hubert – AI-assistent
+
+Hubert är Innovia Hubs AI-assistent och använder OpenAI:s Responses API med function calling för att kommunicera med projektets befintliga backend.
+
+Med Hubert kan användare:
+
+- Ställa frågor om tillgängliga resurser.
+- Kontrollera vilka resurser som är lediga eller upptagna.
+- Boka resurser genom att först bekräfta bokningsförslaget.
+- Se sina egna bokningar.
+- Som administratör se alla användares bokningar.
+
+Hubert använder befintliga services och repositories för att hämta information från databasen. AI:n tolkar användarens frågor, medan backend hanterar bokningar, tillgänglighet och behörighetskontroller.
+
+För att använda Hubert krävs en konfigurerad OpenAI API-nyckel enligt steg 4.
+
 ## Vanliga problem
+
+### Databastabeller saknas
 
 Om backend ger:
 
@@ -157,21 +206,43 @@ cd backend\api
 dotnet ef database update
 ```
 
+### PostgreSQL kan inte nås
+
 Om backend inte får kontakt med PostgreSQL, kontrollera Docker:
 
 ```powershell
 docker compose ps
 ```
 
-och starta databasen vid behov:
+Starta databasen vid behov:
 
 ```powershell
 docker compose up -d
 ```
 
-Om frontend saknar dependencies:
+### Frontend saknar dependencies
+
+Kör:
 
 ```powershell
 cd frontend
 npm install
 ```
+
+### Hubert fungerar inte
+
+Kontrollera att:
+
+- En giltig OpenAI API-nyckel har konfigurerats.
+- Backend är igång.
+- Backend läser API-nyckeln från rätt konfigurationsnamn.
+- OpenAI-kontot har tillgång till API:t och tillräcklig budget.
+
+Om du använder .NET User Secrets kan du kontrollera vilka konfigurationsnycklar som finns genom att köra:
+
+```powershell
+cd backend\api
+dotnet user-secrets list
+```
+
+Dela aldrig din API-nyckel eller andra hemligheter i GitHub, felrapporter eller skärmbilder.
