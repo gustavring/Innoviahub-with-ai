@@ -34,7 +34,7 @@ type Booking = {
   endTime: string;
 };
 
-const SLOT_START_HOUR = 0;
+const SLOT_START_HOUR = 1;
 const SLOT_END_HOUR = 24;
 const BOOKING_START_HOUR = 7;
 const BOOKING_END_HOUR = 24;
@@ -294,7 +294,8 @@ export default function TimeSlots({
   }
 
   function isEndTime(time: string) {
-    return new Date(time).getHours() === BOOKING_END_HOUR;
+    const lastSlot = slots[slots.length - 1];
+    return lastSlot !== undefined && time === lastSlot.endTime;
   }
 
   function handleTimeClick(time: string) {
@@ -334,7 +335,9 @@ export default function TimeSlots({
     }
 
     /* sluttiden får inte vara efter bokningsfönstret */
-    if (selectedHour > BOOKING_END_HOUR) {
+    const lastSlot = slots[slots.length - 1];
+
+    if (!lastSlot || selectedTime > new Date(lastSlot.endTime)) {
       return;
     }
 
@@ -409,6 +412,15 @@ export default function TimeSlots({
             </div>
           );
         })}
+        {slots.length > 0 && (
+          <div
+            className={`${styles.overviewTimeSlot} ${
+              styles[slots[slots.length - 1].status]
+            }`}
+          >
+            24:00
+          </div>
+        )}
       </div>
     );
   }
@@ -470,7 +482,7 @@ export default function TimeSlots({
         </div>
       )}
 
-      {!loading && !error && (
+      {!loading && slots.length > 0 && (
         <div className={styles.placeholder}>
           <div className={styles.timeSlotList}>
             {slots.map((slot) => {
@@ -486,7 +498,7 @@ export default function TimeSlots({
                 <button
                   key={time}
                   type="button"
-                  disabled={!slot.isAvailable && !isEndTime(time)}
+                  disabled={!selectedStart && !slot.isAvailable}
                   className={`
                     ${styles.timeButton}
                     ${styles[slot.status]}
@@ -498,6 +510,24 @@ export default function TimeSlots({
                 </button>
               );
             })}
+            {slots.length > 0 && (
+              <button
+                type="button"
+                disabled={!selectedStart}
+                className={`${styles.timeButton} ${
+                  styles[slots[slots.length - 1].status]
+                } ${
+                  selectedSlot && isEndTime(selectedSlot.endTime)
+                    ? styles.selected
+                    : ""
+                }`}
+                onClick={() =>
+                  handleTimeClick(slots[slots.length - 1].endTime)
+                }
+              >
+                24:00
+              </button>
+            )}
           </div>
         </div>
       )}

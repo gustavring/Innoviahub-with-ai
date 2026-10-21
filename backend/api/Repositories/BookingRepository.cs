@@ -6,6 +6,7 @@ using api.Data;
 using api.Interfaces;
 using api.Models;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace api.Repositories
 {
@@ -48,9 +49,21 @@ namespace api.Repositories
                 return null;
             }
             await _context.Bookings.AddAsync(booking);
-            await _context.SaveChangesAsync();
-
-            return booking;
+            try
+            {
+                await _context.SaveChangesAsync();
+                return booking;
+            }
+            catch (DbUpdateException ex)
+                when (ex.InnerException is PostgresException
+                {
+                    SqlState: PostgresErrorCodes.ExclusionViolation,
+                    ConstraintName: "Bookings_NoOverlap"
+                })
+            {
+                _context.Entry(booking).State = EntityState.Detached;
+                return null;
+            }
         }
 
         public async Task<IEnumerable<Booking>> GetByResourceIdAsync(int resourceId)

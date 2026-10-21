@@ -65,6 +65,13 @@ namespace api.Controllers
                 return NotFound();
             }
 
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (booking.UserId != userId && !User.IsInRole("Admin"))
+            {
+                return Forbid();
+            }
+
             return Ok(booking.ToBookingDto());
         }
 

@@ -5,6 +5,8 @@ import hubertBlink from "../assets/Hubert/HubertClosedEyes.svg";
 import hubertHappy from "../assets/Hubert/HubertHappyEyes.svg";
 import hubertThinking from "../assets/Hubert/HubertLookDownEyes.svg";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 type ChatMessage = {
   sender: "user" | "hubert";
   text: string;
@@ -161,7 +163,7 @@ export default function Hubert() {
     try {
       const token = localStorage.getItem("token");
 
-      const response = await fetch("http://localhost:5197/api/Hubert", {
+      const response = await fetch(`${API_URL}/api/Hubert`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
