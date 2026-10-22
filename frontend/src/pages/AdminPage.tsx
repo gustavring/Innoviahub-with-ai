@@ -6,7 +6,7 @@ import AdminBookings from "../components/AdminBookings";
 import ResourceStatus from "../components/ResourceStatus";
 import RegisterUser from "../components/RegisterUser";
 import Hubert from "../components/Hubert";
-import SensorOverview from "../components/SensorOverview";
+import SensorOverviewContainer from "../components/SensorOverviewContainer";
 
 export default function LandingPage() {
   const [showRegister, setShowRegister] = useState(false);
@@ -26,7 +26,7 @@ export default function LandingPage() {
 
 
             <div className={styles.adminBookingViewWrapper}>
-              <SensorOverview devices={[]} connected={false} />
+              <SensorOverviewContainer />
               <AdminBookings />
             </div>
 

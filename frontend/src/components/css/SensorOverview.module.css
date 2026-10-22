@@ -1,7 +1,7 @@
 .panel {
   width: 100%;
   min-width: 0;
-  padding: 24px;
+  padding: 18px;
 
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   color: var(--text);
@@ -17,22 +17,15 @@
   align-items: flex-start;
   flex-wrap: wrap;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .eyebrow {
   margin: 0 0 6px;
-  color: var(--primary);
-  font-size: 12px;
-  font-weight: 700;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 400;
   letter-spacing: 1.5px;
-  text-transform: uppercase;
-}
-
-.header h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 500;
 }
 
 .description {
@@ -68,50 +61,50 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .card {
   min-width: 0;
-  padding: 16px;
+  padding: 12px;
   background: var(--background);
   border: 1px solid var(--border);
   border-radius: 6px;
 }
 
 .card h3 {
-  margin: 0 0 18px;
-  font-size: 15px;
+  margin: 0 0 12px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .metrics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
   margin: 0;
 }
 
 .metrics dt {
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .metrics dd {
   margin: 0;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 
 .updated {
-  margin: 18px 0 0;
-  padding-top: 12px;
+  margin: 12px 0 0;
+  padding-top: 8px;
   border-top: 1px solid var(--border);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .message,
