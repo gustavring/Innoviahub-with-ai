@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Input from "../components/Input";
@@ -13,6 +13,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!error) return;
+
+    const timeout = window.setTimeout(() => {
+      setError("");
+    }, 5000);
+
+    return () => window.clearTimeout(timeout);
+  }, [error]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -44,9 +54,9 @@ export default function LoginPage() {
 
       const data = await response.json();
 
-      localStorage.setItem("token", data.token);
+      sessionStorage.setItem("token", data.token);
 
-      navigate("/");
+      navigate("/", { replace: true });
     } catch {
       setError("Kunde inte ansluta till servern. Försök igen.");
     } finally {
@@ -59,6 +69,11 @@ export default function LoginPage() {
       <Navbar />
 
       <main className={styles.loginPage}>
+        {error && (
+          <div className={styles.errorToast} role="alert">
+            {error}
+          </div>
+        )}
         <section className={styles.loginCard}>
           <div className={styles.heading}>
             <p className={styles.eyebrow}>Innovia</p>
@@ -84,8 +99,6 @@ export default function LoginPage() {
               placeholder="Skriv ditt lösenord"
               onChange={setPassword}
             />
-
-            {error && <p role="alert">{error}</p>}
 
             <button
               className={styles.backButton}

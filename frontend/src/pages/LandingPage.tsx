@@ -37,6 +37,28 @@ export default function LandingPage() {
   const [bookingsRefreshKey, setBookingsRefreshKey] = useState(0);
 
   useEffect(() => {
+    if (!bookingMessage && !bookingError) return;
+
+    const timeout = window.setTimeout(() => {
+      setBookingMessage("");
+      setBookingError("");
+    }, 5000);
+
+    return () => window.clearTimeout(timeout);
+  }, [bookingMessage, bookingError]);
+
+  function formatTime(dateString: string, isEndTime = false) {
+    const time = new Date(dateString).toLocaleTimeString("sv-SE", {
+      timeZone: "Europe/Stockholm",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    });
+
+    return isEndTime && time === "00:00" ? "24:00" : time;
+  }
+
+  useEffect(() => {
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(`${API_URL}/Hubs/Booking`)
       .withAutomaticReconnect()
@@ -75,7 +97,7 @@ export default function LandingPage() {
       return;
     }
 
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
 
     if (!token) {
       setBookingError("Du måste vara inloggad för att boka.");
@@ -238,15 +260,9 @@ export default function LandingPage() {
             <section className={styles.bookingAction}>
               <p>
                 Vald tid:{" "}
-                {new Date(selectedSlot.startTime).toLocaleTimeString("sv-SE", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {formatTime(selectedSlot.startTime)}
                 {" – "}
-                {new Date(selectedSlot.endTime).toLocaleTimeString("sv-SE", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {formatTime(selectedSlot.endTime, true)}
               </p>
 
               <button
@@ -259,12 +275,15 @@ export default function LandingPage() {
             </section>
           )}
 
-          {bookingMessage && (
-            <div className={styles.successMessage}>{bookingMessage}</div>
-          )}
-
-          {bookingError && (
-            <div className={styles.errorMessage}>{bookingError}</div>
+          {(bookingMessage || bookingError) && (
+            <div
+              className={`${styles.bookingToast} ${
+                bookingError ? styles.errorMessage : styles.successMessage
+              }`}
+              role={bookingError ? "alert" : "status"}
+            >
+              {bookingError || bookingMessage}
+            </div>
           )}
 
           <Bookings key={bookingsRefreshKey} />

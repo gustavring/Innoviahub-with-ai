@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Input from "./Input";
 import styles from "./css/RegisterUser.module.css";
 
@@ -13,15 +13,28 @@ export default function RegisterUser({ onBack }: RegisterUserProps) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+
+  useEffect(() => {
+    if (!error && !successMessage) return;
+
+    const timeout = window.setTimeout(() => {
+      setError("");
+      setSuccessMessage("");
+    }, 5000);
+
+    return () => window.clearTimeout(timeout);
+  }, [error, successMessage]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     setError("");
+    setSuccessMessage("");
     setLoading(true);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
 
       if (!token) {
         setError("Du måste vara inloggad som admin.");
@@ -47,6 +60,9 @@ export default function RegisterUser({ onBack }: RegisterUserProps) {
         setError(errorMessage || "Något gick fel");
         return;
       }
+      setSuccessMessage("Användaren har skapats!");
+      setEmail("");
+      setPassword("");
     } catch {
       setError("Kunde inte ansluta till servern. Försök igen.");
     } finally {
@@ -56,6 +72,16 @@ export default function RegisterUser({ onBack }: RegisterUserProps) {
 
   return (
     <main className={styles.registerPage}>
+      {(error || successMessage) && (
+        <div
+          className={`${styles.toast} ${
+            error ? styles.errorToast : styles.successToast
+          }`}
+          role={error ? "alert" : "status"}
+        >
+          {error || successMessage}
+        </div>
+      )}
       <section className={styles.registerCard}>
         <div className={styles.heading}>
           <p className={styles.eyebrow}>ADMIN</p>
@@ -84,15 +110,6 @@ export default function RegisterUser({ onBack }: RegisterUserProps) {
             placeholder="ex. Abc123!"
             onChange={setPassword}
           />
-
-          {error && (
-            <p
-              className={styles.errorMessage}
-              role="alert"
-            >
-              {error}
-            </p>
-          )}
 
           <button
             className={styles.backButton}
