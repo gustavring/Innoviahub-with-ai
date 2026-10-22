@@ -1,28 +1,17 @@
-import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import styles from "./css/Navbar.module.css";
+import { getSession } from "../auth";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const token = localStorage.getItem("token");
-  const [isLoggedIn, setIsLoggedIn] = useState(!!token);
-
-  const payload = token
-    ? JSON.parse(
-        atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")),
-      )
-    : null;
-
-  const isAdmin =
-    payload?.[
-      "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
-    ] === "Admin";
+  const session = getSession();
+  const isLoggedIn = session !== null;
+  const isAdmin = session?.isAdmin ?? false;
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    setIsLoggedIn(false);
-    navigate("/login");
+    sessionStorage.removeItem("token");
+    navigate("/login", { replace: true });
   };
 
   return (

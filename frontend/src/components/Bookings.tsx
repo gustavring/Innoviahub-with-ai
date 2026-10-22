@@ -26,7 +26,7 @@ export default function Bookings() {
         setLoading(true);
         setError("");
 
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         if (!token) {
           throw new Error("Ingen inloggningstoken hittades.");
@@ -80,15 +80,19 @@ export default function Bookings() {
     return new Date(dateString).toLocaleDateString("sv-SE");
   }
 
-  function formatTime(dateString: string) {
-    return new Date(dateString).toLocaleTimeString("sv-SE", {
+  function formatTime(dateString: string, isEndTime = false) {
+    const time = new Date(dateString).toLocaleTimeString("sv-SE", {
+      timeZone: "Europe/Stockholm",
       hour: "2-digit",
       minute: "2-digit",
+      hourCycle: "h23",
     });
+
+    return isEndTime && time === "00:00" ? "24:00" : time;
   }
 
   const deleteBooking = async (id: number) => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
 
     const response = await fetch(`${API_URL}/api/Bookings/${id}`, {
       method: "DELETE",
@@ -160,7 +164,7 @@ export default function Bookings() {
               <div className={styles.time}>
                 {formatTime(booking.startTime)}
                 {" – "}
-                {formatTime(booking.endTime)}
+                {formatTime(booking.endTime, true)}
               </div>
               <button
                 className={styles.deleteButton}

@@ -106,7 +106,7 @@ export default function TimeSlots({
 
   useEffect(() => {
     async function fetchMyBookings() {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
 
       if (!token) {
         setMyBookings([]);
