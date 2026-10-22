@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import styles from "./css/SensorOverview.module.css";
 
 type SensorDevice = {
@@ -21,6 +22,13 @@ export default function SensorOverview({
   loading = false,
   error = "",
 }: SensorOverviewProps) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   return (
     <section className={styles.panel}>
       <div className={styles.header}>
@@ -34,7 +42,7 @@ export default function SensorOverview({
         <span className={styles.connection} role="status">
           <span
             className={`${styles.dot} ${
-              connected ? styles.connected : ""
+              connected ? styles.active : styles.disconnected
             }`}
           />
           {connected ? "Realtid ansluten" : "Realtid frånkopplad"}
@@ -56,8 +64,25 @@ export default function SensorOverview({
       )}
 
       <div className={styles.grid}>
-        {devices.map((device) => (
+        {devices.map((device) => {
+          const age = device.updatedAt
+            ? now - Date.parse(device.updatedAt)
+            : Infinity;
+          const isFresh = connected && age >= 0 && age < 30_000;
+
+          return (
           <article className={styles.card} key={device.id}>
+            <span
+              className={`${styles.deviceDot} ${
+                isFresh ? styles.active : styles.waiting
+              }`}
+              role="img"
+              aria-label={
+                isFresh
+                  ? "Enheten skickar aktuella mätvärden"
+                  : "Väntar på aktuella mätvärden"
+              }
+            />
             <h3>{device.serial}</h3>
 
             <dl className={styles.metrics}>
@@ -96,7 +121,8 @@ export default function SensorOverview({
                 : "Väntar på första mätningen"}
             </p>
           </article>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
