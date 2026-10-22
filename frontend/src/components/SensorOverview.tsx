@@ -26,7 +26,6 @@ export default function SensorOverview({
       <div className={styles.header}>
         <div>
           <p className={styles.eyebrow}>Sensorer</p>
-          <h2>Sensoröversikt</h2>
           <p className={styles.description}>
             {devices.length} registrerade enheter
           </p>
