@@ -13,11 +13,15 @@ namespace api.Data
         {
             var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
             var userManager = services.GetRequiredService<UserManager<User>>();
+            var configuration = services.GetRequiredService<IConfiguration>();
 
             const string adminRole = "Admin";
-            const string adminEmail = "admin@innoviahub.se";
+            var adminEmail = configuration["Admin:Email"];
 
-            var adminPassword = "Admin123!";
+            if (string.IsNullOrWhiteSpace(adminEmail))
+            {
+                throw new InvalidOperationException("Admin:Email saknas.");
+            }
 
             if (!await roleManager.RoleExistsAsync(adminRole))
             {
@@ -28,6 +32,14 @@ namespace api.Data
 
             if (adminUser == null)
             {
+                var adminPassword = configuration["Admin:Password"];
+
+                if (string.IsNullOrWhiteSpace(adminPassword))
+                {
+                    throw new InvalidOperationException(
+                        "Admin:Password saknas när adminkontot ska skapas.");
+                }
+
                 adminUser = new User
                 {
                     UserName = adminEmail,

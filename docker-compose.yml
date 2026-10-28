@@ -33,6 +33,8 @@ services:
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       Jwt__Key: ${JWT_KEY}
       AI_API_KEY: ${AI_API_KEY}
+      Admin__Email: ${ADMIN_EMAIL:?ADMIN_EMAIL saknas}
+      Admin__Password: ${ADMIN_PASSWORD:?ADMIN_PASSWORD saknas}
 
     ports:
       - "5197:8080"
