@@ -13,6 +13,7 @@ type SensorOverviewProps = {
   devices: SensorDevice[];
   connected: boolean;
   loading?: boolean;
+  offline?: boolean;
   error?: string;
 };
 
@@ -20,6 +21,7 @@ export default function SensorOverview({
   devices,
   connected,
   loading = false,
+  offline = false,
   error = "",
 }: SensorOverviewProps) {
   const [now, setNow] = useState(() => Date.now());
@@ -35,31 +37,45 @@ export default function SensorOverview({
         <div>
           <p className={styles.eyebrow}>Sensorer</p>
           <p className={styles.description}>
-            {devices.length} registrerade enheter
+            {offline
+              ? "Temperatur och luftkvalitet"
+              : `${devices.length} registrerade enheter`}
           </p>
         </div>
 
         <span className={styles.connection} role="status">
           <span
             className={`${styles.dot} ${
-              connected ? styles.active : styles.disconnected
+              offline ? styles.waiting : connected ? styles.active : styles.disconnected
             }`}
           />
-          {connected ? "Realtid ansluten" : "Realtid frånkopplad"}
+          {offline ? "Offline" : connected ? "Realtid ansluten" : "Realtid frånkopplad"}
         </span>
       </div>
 
-      {loading && (
+      {offline && (
+        <div className={styles.offlineNotice} role="status">
+          <span className={styles.offlineIndicator} aria-hidden="true" />
+          <div>
+            <p className={styles.offlineTitle}>Sensorerna är offline</p>
+            <p className={styles.offlineText}>
+              Mätvärden är inte tillgängliga just nu. Övriga funktioner fungerar som vanligt.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!offline && loading && (
         <p className={styles.message}>Hämtar enheter...</p>
       )}
 
-      {error && (
+      {!offline && error && (
         <p className={styles.error} role="alert">
           {error}
         </p>
       )}
 
-      {!loading && !error && devices.length === 0 && (
+      {!offline && !loading && !error && devices.length === 0 && (
         <p className={styles.message}>Inga enheter hittades.</p>
       )}
 
