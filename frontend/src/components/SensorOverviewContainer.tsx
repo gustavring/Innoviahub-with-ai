@@ -26,9 +26,6 @@ const TENANT_SLUG = import.meta.env.VITE_IOT_TENANT_SLUG;
 const REALTIME_URL = import.meta.env.VITE_IOT_REALTIME_URL;
 const IOT_ENABLED = import.meta.env.VITE_IOT_ENABLED !== "false";
 
-const IOT_OFFLINE_MESSAGE =
-  "IoT-enheterna är offline just nu. Övriga funktioner kan användas som vanligt.";
-
 export default function SensorOverviewContainer() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(IOT_ENABLED);
@@ -204,7 +201,8 @@ export default function SensorOverviewContainer() {
       devices={devices}
       connected={connected}
       loading={loading}
-      error={IOT_ENABLED ? error : IOT_OFFLINE_MESSAGE}
+      offline={!IOT_ENABLED}
+      error={error}
     />
   );
 }

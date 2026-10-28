@@ -35,9 +35,6 @@ services:
       Admin__Email: ${ADMIN_EMAIL:?ADMIN_EMAIL saknas}
       Admin__Password: ${ADMIN_PASSWORD:?ADMIN_PASSWORD saknas}
 
-    ports:
-      - "127.0.0.1:5197:8080"
-
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,11 +49,30 @@ services:
 
     restart: unless-stopped
 
+    depends_on:
+      - api
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN saknas}
+
     ports:
-      - "127.0.0.1:3000:80"
+      - "80:80"
+      - "443:443"
+
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
 
     depends_on:
+      - frontend
       - api
 
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:
