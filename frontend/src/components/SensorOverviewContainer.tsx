@@ -24,14 +24,20 @@ type Measurement = {
 const REGISTRY_URL = import.meta.env.VITE_IOT_REGISTRY_URL;
 const TENANT_SLUG = import.meta.env.VITE_IOT_TENANT_SLUG;
 const REALTIME_URL = import.meta.env.VITE_IOT_REALTIME_URL;
+const IOT_ENABLED = import.meta.env.VITE_IOT_ENABLED !== "false";
+
+const IOT_OFFLINE_MESSAGE =
+  "IoT-enheterna är offline just nu. Övriga funktioner kan användas som vanligt.";
 
 export default function SensorOverviewContainer() {
   const [devices, setDevices] = useState<Device[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(IOT_ENABLED);
   const [error, setError] = useState("");
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
+    if (!IOT_ENABLED) return;
+
     const controller = new AbortController();
     let connection: HubConnection | undefined;
 
@@ -198,7 +204,7 @@ export default function SensorOverviewContainer() {
       devices={devices}
       connected={connected}
       loading={loading}
-      error={error}
+      error={IOT_ENABLED ? error : IOT_OFFLINE_MESSAGE}
     />
   );
 }
