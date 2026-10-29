@@ -111,11 +111,133 @@ button:active {
 
 /* Samma bredder används i både rubriken och användarraderna */
 .email {
-    width: 70%;
+    width: 55%;
+    min-width: 0;
+    padding-right: 12px;
+    overflow-wrap: anywhere;
 }
 
 .role {
-    width: 30%;
+    width: 25%;
+}
+
+.actions {
+    width: 20%;
+    text-align: right;
+}
+
+.deleteButton {
+    margin: 0;
+    padding: 6px 8px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: #f87171;
+    font-size: 12px;
+    letter-spacing: 0;
+    white-space: nowrap;
+}
+
+.deleteButton:hover {
+    color: #fca5a5;
+    background: rgba(248, 113, 113, 0.08);
+    border-color: rgba(248, 113, 113, 0.25);
+}
+
+.deleteDialog {
+    box-sizing: border-box;
+    width: min(420px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    margin: auto;
+    padding: 28px;
+    overflow-y: auto;
+    background: linear-gradient(145deg, var(--surface), var(--background));
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.deleteDialog::backdrop {
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(3px);
+}
+
+.dialogEyebrow {
+    margin: 0 0 10px;
+    color: var(--primary);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+}
+
+.deleteDialog h2 {
+    margin: 0 0 16px;
+    font-size: 22px;
+}
+
+.deleteDialog p {
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.dialogDescription {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.dialogError {
+    color: #fca5a5;
+    font-size: 13px;
+}
+
+.dialogActions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+.cancelButton,
+.confirmDeleteButton {
+    margin: 0;
+    padding: 10px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    letter-spacing: 0;
+}
+
+.cancelButton {
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid var(--border);
+}
+
+.cancelButton:hover {
+    color: var(--text);
+    border-color: var(--primary);
+}
+
+.confirmDeleteButton {
+    color: #fff;
+    background: #b91c1c;
+    border: 1px solid #dc2626;
+}
+
+.confirmDeleteButton:hover {
+    color: #fff;
+    background: #991b1b;
+}
+
+.dialogActions button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.deleteButton:focus-visible,
+.dialogActions button:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
 }
 
 @media (max-width: 600px) {
@@ -148,13 +270,24 @@ button:active {
     }
 
     .email {
-        width: 75%;
+        width: 50%;
         overflow-wrap: anywhere;
     }
 
     .role {
         width: 25%;
-        text-align: right;
+    }
+
+    .actions {
+        width: 25%;
+    }
+
+    .deleteButton {
+        padding: 8px 4px;
+    }
+
+    .deleteDialog {
+        padding: 22px;
     }
 
     .placeholder {

@@ -19,6 +19,17 @@ namespace api.Repositories
             return await _userManager.FindByEmailAsync(email);
         }
 
+        public async Task<User?> GetByIdAsync(string id)
+        {
+            return await _userManager.FindByIdAsync(id);
+        }
+
+        public async Task<bool> DeleteUserAsync(User user)
+        {
+            var result = await _userManager.DeleteAsync(user);
+            return result.Succeeded;
+        }
+
         public async Task<bool> CheckPasswordAsync(User user, string password)
         {
             return await _userManager.CheckPasswordAsync(user, password);

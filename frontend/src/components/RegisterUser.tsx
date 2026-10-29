@@ -11,6 +11,7 @@ type RegisterUserProps = {
 export default function RegisterUser({ onBack }: RegisterUserProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -31,6 +32,12 @@ export default function RegisterUser({ onBack }: RegisterUserProps) {
 
     setError("");
     setSuccessMessage("");
+
+    if (!password || password !== confirmPassword) {
+      setError("Lösenorden matchar inte.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -50,6 +57,7 @@ export default function RegisterUser({ onBack }: RegisterUserProps) {
         body: JSON.stringify({
           email,
           password,
+          confirmPassword,
         }),
       });
 
@@ -63,6 +71,7 @@ export default function RegisterUser({ onBack }: RegisterUserProps) {
       setSuccessMessage("Användaren har skapats!");
       setEmail("");
       setPassword("");
+      setConfirmPassword("");
     } catch {
       setError("Kunde inte ansluta till servern. Försök igen.");
     } finally {
@@ -109,6 +118,14 @@ export default function RegisterUser({ onBack }: RegisterUserProps) {
             value={password}
             placeholder="ex. Abc123!"
             onChange={setPassword}
+          />
+
+          <Input
+            type="password"
+            label="Bekräfta lösenord"
+            value={confirmPassword}
+            placeholder="Skriv lösenordet igen"
+            onChange={setConfirmPassword}
           />
 
           <button

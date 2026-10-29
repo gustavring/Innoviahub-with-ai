@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import TimeSlots from "./TimeSlots";
 import styles from "../components/css/Calendar.module.css";
 
@@ -8,6 +8,8 @@ type CalendarProps = {
   onDateSelect: (date: Date) => void;
   refreshKey: number;
 };
+
+const ignoreSelection = () => {};
 
 export default function Calendar({
   selectedDate,
@@ -20,21 +22,22 @@ export default function Calendar({
   //datumet bestämmer vilken vecka kalendern visar
   const [displayDate, setDisplayDate] = useState(new Date());
 
-  //hittar måndagen i veckan som displayDate ligger i
-  const mondayOfWeek = new Date(displayDate);
+  // Behåll samma datumobjekt tills veckan ändras.
+  const weekDays = useMemo(() => {
+    const monday = new Date(displayDate);
+    monday.setHours(0, 0, 0, 0);
 
-  const dayOfWeek = displayDate.getDay();
-  const daysFromMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const day = monday.getDay();
+    monday.setDate(monday.getDate() + (day === 0 ? -6 : 1 - day));
 
-  mondayOfWeek.setDate(displayDate.getDate() + daysFromMonday);
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + index);
+      return date;
+    });
+  }, [displayDate]);
 
-  //skapar veckans 7 dagar
-  const weekDays = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(mondayOfWeek);
-    date.setDate(mondayOfWeek.getDate() + index);
-
-    return date;
-  });
+  const mondayOfWeek = weekDays[0];
 
   const getFirstMondayOfMonth = (year: number, month: number) => {
     const date = new Date(year, month, 1);
@@ -162,8 +165,8 @@ export default function Calendar({
                   selectedDate={date}
                   selectedResourceType={selectedResourceType}
                   selectedResourceId={null}
-                  onResourceSelect={() => {}}
-                  onSlotSelect={() => {}}
+                  onResourceSelect={ignoreSelection}
+                  onSlotSelect={ignoreSelection}
                   selectedSlot={null}
                   overview={true}
                   refreshKey={refreshKey}
