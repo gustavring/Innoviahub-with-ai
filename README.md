@@ -1,210 +1,260 @@
 # Innovia Hub
 
-Innovia Hub är en webbapplikation för ett coworking- och forskningscenter där användare kan boka resurser och se deras tillgänglighet.
+Innovia Hub är en webbapplikation för ett coworking- och forskningscenter. Här kan användare boka skrivbord, mötesrum, VR-headset och AI-server.
 
-Projektet innehåller även **Hubert**, en AI-assistent som hjälper användare med frågor om resurser, tillgänglighet och bokningar.
+Det finns också en adminvy och AI-assistenten Hubert, som hjälper till med frågor om resurser, lediga tider och bokningar.
 
-Projektet finns på GitHub: [Innoviahub-with-ai](https://github.com/gustavring/Innoviahub-with-ai), branch `dev-2.0`.
+## Publicerad version
+
+Applikationen är publicerad på DigitalOcean.
+
+- Webbplats: https://64.225.99.232.nip.io
+- GitHub: https://github.com/gustavring/Innoviahub-with-ai
+- Branch för den publicerade versionen: `dev-deploy`
 
 ## Tekniker
 
-- **Backend:** ASP.NET Core Web API (.NET 8)
-- **Frontend:** React, TypeScript och Vite
-- **Databas:** PostgreSQL och Entity Framework Core
-- **Autentisering:** ASP.NET Core Identity och JWT
-- **Realtid:** SignalR
-- **AI:** OpenAI API (Hubert)
-- **Docker:** Backend, frontend och PostgreSQL
+- React, TypeScript och Vite
+- ASP.NET Core Web API (.NET 8)
+- PostgreSQL och Entity Framework Core
+- ASP.NET Core Identity och JWT
+- SignalR
+- OpenAI API
+- Docker Compose
+- Caddy
+- DigitalOcean
 
-## Kom igång
+## Det jag har vidareutvecklat
 
-Du kan starta hela projektet med Docker eller köra backend och frontend separat för lokal utveckling.
+Efter grupparbetet har jag arbetat vidare med:
+
+- AI-assistenten Hubert som kan svara på frågor, kontrollera tillgänglighet och hjälpa till med bokningar.
+- IoT-kopplingen i adminvyn. Tio enheter hämtas från DeviceRegistry och mätvärden uppdateras via SignalR.
+- Ett offlineläge för IoT så att resten av sidan fungerar när IoT-tjänsten inte körs.
+- Hämtningen av tider och bokningar för att göra flödet stabilare.
+- Bokningslistor som visar högst fem bokningar och kan fällas ut med en pil.
+- Möjligheten för admin att växla mellan aktuella och gamla bokningar.
+- Behörighetskontroller för bokningshistoriken så att bara admin kan hämta den.
+- Bekräftelse av lösenord vid registrering.
+- Möjligheten för admin att ta bort användare med en bekräftelseruta. Användare med adminrollen kan inte tas bort.
+- Styling för bland annat bokningslistor, popupfönster och IoT:s offlineläge.
+- Konfiguration av adminkontot via miljövariabler.
+- Docker-konfiguration och publicering på DigitalOcean med HTTPS via Caddy.
+
+## Starta projektet lokalt
+
+Du behöver Git och Docker Desktop. För att köra frontend med Vite behöver du även Node.js och npm.
 
 ### 1. Klona projektet
 
 ```powershell
-git clone -b dev-2.0 https://github.com/gustavring/Innoviahub-with-ai.git
+git clone -b dev-deploy https://github.com/gustavring/Innoviahub-with-ai.git
 cd Innoviahub-with-ai
 ```
 
-### 2. Konfigurera miljövariabler
+### 2. Skapa .env
 
-Kopiera `.env.example` till `.env` i projektets rotmapp:
+Kör från projektets rot:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Öppna `.env` och fyll i dina värden:
+Öppna `.env` och fyll i värdena enligt mallen.
+
+För lokal körning av produktionsläget ska adresserna vara:
 
 ```dotenv
-JWT_KEY=ange-en-lang-slumpmassig-hemlig-nyckel-har
-POSTGRES_DB=innoviahub
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=ditt_databaslosenord
-AI_API_KEY=din_openai_api_nyckel
+APP_DOMAIN=http://localhost
+PUBLIC_API_URL=http://localhost
 ```
 
-Använd en lång, slumpmässigt genererad JWT-nyckel, helst minst 32 byte.
+Du behöver även fylla i:
 
-Du kan skapa en OpenAI API-nyckel på https://platform.openai.com/api-keys.
+- `POSTGRES_DB`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `JWT_KEY`
+- `AI_API_KEY`
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
 
-**Viktigt:** `.env` innehåller känsliga uppgifter och ska inte laddas upp till GitHub.
+JWT-nyckeln ska vara lång och slumpmässig, minst 32 byte. Adminlösenordet behöver uppfylla projektets lösenordskrav.
 
-### 3. Starta med Docker (rekommenderas)
+`.env` innehåller hemliga uppgifter och ska inte laddas upp till GitHub.
 
-Se till att Docker Desktop är igång.
+Adminkontot skapas när backend startar om kontot inte redan finns. Om kontot redan finns ändras inte dess lösenord genom att ändra `.env`.
 
-Kör från projektets rotmapp:
+Vid lokal körning loggar du in som admin med uppgifterna från `ADMIN_EMAIL` och `ADMIN_PASSWORD`. Övriga användarkonton skapas sedan i adminvyn.
+
+### 3. Starta med samma upplägg som den publicerade sidan
+
+Se till att Docker Desktop är igång. Kör från projektets rot:
+
+```powershell
+docker compose -f docker-compose.production.yml up -d --build
+```
+
+Öppna:
+
+http://localhost
+
+Detta startar PostgreSQL, backend, frontend och Caddy. Databasmigrationerna körs automatiskt när backend startar.
+
+IoT är avstängt i detta läge och visas som offline.
+
+För att kontrollera tjänsterna:
+
+```powershell
+docker compose -f docker-compose.production.yml ps
+```
+
+För att stoppa:
+
+```powershell
+docker compose -f docker-compose.production.yml down
+```
+
+### Alternativ: Vanlig Docker-körning
+
+Stoppa först produktionsläget om det körs.
+
+Kör sedan från projektets rot:
 
 ```powershell
 docker compose up -d --build
 ```
 
-Detta startar PostgreSQL, backend och frontend. Databasmigrationerna körs automatiskt när backend startar.
+Öppna:
 
-Öppna webbapplikationen på:
+http://localhost:3000
 
-**http://localhost:3000**
+Backend och Swagger finns på:
 
-Backend körs på `http://localhost:5197`.
+http://localhost:5197/swagger
 
-För att stoppa projektet:
+För att stoppa:
 
 ```powershell
 docker compose down
 ```
 
-### 4. Alternativ: Kör backend och frontend separat
+### Alternativ: Frontend med Vite
 
-Vid lokal utveckling kan du köra PostgreSQL i Docker och starta backend och frontend var för sig.
+Detta läge kan användas när du utvecklar frontend eller vill testa den lokala IoT-kopplingen.
 
-**Starta PostgreSQL** från projektets rotmapp:
-
-```powershell
-docker compose up -d postgres
-```
-
-**Starta backend** i en terminal från projektets rotmapp:
+Stoppa först det Docker-läge som körs. Starta sedan backend och databasen från projektets rot:
 
 ```powershell
-cd backend\api
-dotnet user-secrets set "Jwt:Key" "DIN_JWT_NYCKEL"
-$env:AI_API_KEY = "DIN_OPENAI_API_NYCKEL"
-dotnet run
+docker compose up -d --build api
 ```
 
-Använd samma säkra JWT-nyckel som du har angett i `.env`.
-
-Backend körs normalt på `http://localhost:5197`.
-
-Backend använder `appsettings.json` för databasanslutningen och JWT-inställningarna.
-
-**Viktigt:** Vid lokal körning måste databasuppgifterna i `appsettings.json` stämma med uppgifterna i `.env`. Annars kan backend inte ansluta till PostgreSQL.
-
-**Starta frontend** i en ny terminal från projektets rotmapp:
+Starta frontend i en terminal:
 
 ```powershell
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-Öppna webbapplikationen på:
+Öppna:
 
-**http://localhost:5173**
+http://localhost:5173
 
-Observera att `dotnet run` inte automatiskt läser `.env`. Därför anges JWT-nyckeln och OpenAI API-nyckeln separat vid lokal körning.
+IoT-tjänsterna behöver startas separat för att sensorvärden ska visas.
 
-## Starta projektet nästa gång
+Kör ett av de lokala uppläggen åt gången. Använd inte `down -v` om du vill behålla innehållet i databasen.
 
-**Med Docker**, från projektets rotmapp:
+## Så testar du sidan
 
-```powershell
-docker compose up -d
-```
+Öppna:
 
-Öppna `http://localhost:3000`.
+https://64.225.99.232.nip.io
 
-**Vid lokal utveckling:** Starta PostgreSQL med Docker, backend med `dotnet run` och frontend med `npm run dev`. Se till att `AI_API_KEY` är tillgänglig i backendterminalen.
+Inloggningsuppgifter för att testa som vanlig användare och admin lämnas separat vid inlämningen. Det går inte att registrera sig själv som besökare. Bara admin kan skapa användarkonton.
 
-Du behöver normalt inte köra `npm install` igen. Databasmigrationerna körs automatiskt vid backendstart.
+### Bokning
 
-## Om systemet
+1. Logga in.
+2. Välj en resurs, ett datum och en ledig tid.
+3. Genomför bokningen.
+4. Kontrollera att bokningen visas i bokningslistan.
+5. Prova att ta bort bokningen.
 
-Innovia Hub har fyra typer av bokningsbara resurser:
+Om det finns fler än fem aktuella bokningar visas en pil längst ned. Den visar resten av bokningarna och kan sedan användas för att fälla ihop listan igen.
 
-| Resurs | Antal |
-|---|---:|
-| Skrivbord | 15 |
-| Mötesrum | 4 |
-| VR-headset | 4 |
-| AI-server | 1 |
+### Realtidsuppdateringar
 
-Systemet använder JWT för autentisering och SignalR för att uppdatera bokningar i realtid.
+Öppna sidan i två olika webbläsare eller använd ett privat fönster. Logga in med två olika konton.
 
-Det finns två roller: `User` och `Admin`.
+Skapa eller ta bort en bokning i det ena fönstret. Tillgängligheten ska uppdateras i det andra utan att sidan laddas om.
 
-## Hubert – AI-assistent
+### Hubert
 
-Hubert använder OpenAI:s Responses API med modellen `gpt-5-mini`.
+Klicka på Hubert för att öppna chatten.
 
-Med Hubert kan användare:
+Du kan exempelvis fråga:
 
-- Ställa frågor om resurser och tillgänglighet.
-- Kontrollera vilka resurser som är lediga.
-- Boka resurser efter inloggning och bekräftelse.
-- Se sina egna bokningar när de är inloggade.
-- Som administratör se alla användares bokningar.
+- ”Vilka resurser finns?”
+- ”Finns det ett ledigt mötesrum i morgon klockan 10?”
+- ”Visa mina bokningar.”
 
-Hubert tolkar användarens frågor, medan backend kontrollerar tillgänglighet, skapar bokningar och hanterar behörigheter.
+Hubert kan också hjälpa till att boka en ledig resurs. Bokningen behöver bekräftas innan den genomförs.
 
-För att Hubert ska fungera behövs en giltig OpenAI API-nyckel.
+Hubert behöver en giltig OpenAI API-nyckel och tillgång till API:t.
 
-## Vanliga problem
+### Admin
 
-**Docker startar inte**
+Som admin kan du:
 
-Kontrollera att Docker Desktop är igång och kör:
+- Se användarnas bokningar.
+- Växla mellan aktuella och gamla bokningar.
+- Fälla ut bokningslistan om det finns fler än fem bokningar.
+- Registrera användare.
+- Ta bort användare genom att bekräfta i popupfönstret.
+- Se sensoröversikten, endast lokalt.
 
-```powershell
-docker compose up -d --build
-```
+Användare med adminrollen har ingen knapp för att tas bort. Detta skyddas även i backend.
 
-Visa loggarna vid behov:
+### Registrera användare
 
-```powershell
-docker compose logs
-```
+1. Logga in som admin och öppna adminvyn.
+2. Klicka på **Registrera användare**.
+3. Fyll i användarens e-postadress och lösenord.
+4. Skriv samma lösenord i **Bekräfta lösenord**.
+5. Klicka på **Registrera**. När kontot har skapats visas ett meddelande.
+6. Klicka på **Tillbaka till admin** för att gå tillbaka till adminvyn.
 
-**Databasen fungerar inte**
+Om lösenorden inte matchar visas ett fel och kontot skapas inte. Lösenordet behöver också uppfylla projektets lösenordskrav.
 
-Kontrollera att PostgreSQL körs:
+Det nya kontot kan sedan logga in med e-postadressen och lösenordet som admin angav. Registreringen ger inte kontot adminbehörighet. Bara admin får använda registreringen, vilket kontrolleras även i backend.
 
-```powershell
-docker compose ps
-```
+## IoT
 
-Kontrollera även databasuppgifterna i `.env` och, vid lokal körning, i `appsettings.json`.
+Lokalt kan plattformen kopplas till den separata IoT-tjänsten.
 
-**Hubert fungerar inte**
+Tio enheter hämtas från DeviceRegistry. Temperatur, CO₂ och senaste mättid uppdateras via SignalR.
 
-Kontrollera att `AI_API_KEY` är korrekt, att backend har tillgång till nyckeln och att OpenAI-kontot har API-åtkomst.
+IoT-servern är inte publicerad. I den publicerade versionen visas därför att sensorerna är offline. Resten av plattformen kan fortfarande användas.
 
-Om du ändrat `.env` vid Docker-körning kan du behöva återskapa containrarna:
+Mer information om kopplingen finns i `Implementation.md`. Installation och start av IoT-tjänsterna beskrivs i IoT-projektets dokumentation.
 
-```powershell
-docker compose up -d --force-recreate
-```
+## Driftsättning
 
-**Frontend startar inte lokalt**
+Applikationen körs på en Ubuntu-server hos DigitalOcean.
 
-Gå till `frontend` och kör:
+Docker Compose startar PostgreSQL, backend, frontend och Caddy. Caddy hanterar HTTPS och skickar anropen vidare till rätt tjänst.
 
-```powershell
-npm install
-```
+Servern använder branchen `dev-deploy`. När koden uppdateras hämtas ändringarna från GitHub och de ändrade tjänsterna byggs om.
 
----
+Serverns miljövariabler ligger i en separat `.env` och finns inte på GitHub.
 
-Dela aldrig API-nycklar, lösenord eller andra hemligheter på GitHub.
+Databasen sparas i en Docker-volym så att innehållet finns kvar när containrarna byggs om.
+
+## Kända problem och begränsningar
+
+- Hämtningen och visningen av lediga tider kan ibland kännas lite buggig. Jag har gjort förbättringar i hämtningen, men den delen behöver fortfarande förbättras.
+- När en resurstyp är vald gör kalendern cirka 119 tillgänglighetsanrop för en vecka. Hämtningen kan köras igen när dina bokningar har hämtats, vilket kan göra laddningen långsam.
+- Hämtningsfel kan göra att kalendern visas tom.
+- När admin tar bort en användare tas kontot bort, men en redan utfärdad inloggningstoken spärras inte direkt. Den kan fortfarande godtas tills den går ut, normalt efter två timmar från inloggningen.
+- Knappen **Lås en resurs** finns i adminvyn men har ännu ingen funktion.
