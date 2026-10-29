@@ -76,7 +76,7 @@ namespace api.Repositories
     return await _context.Bookings
         .Include(b => b.Resource)
         .Include(b => b.User)
-        .Where(b => b.UserId == id)
+        .Where(b => b.UserId == id && b.EndTime > DateTime.UtcNow)
         .ToListAsync();
 }
 

@@ -21,23 +21,21 @@ export default function AdminBookings() {
   const [showAll, setShowAll] = useState(false);
   const [showPassed, setShowPassed] = useState(false);
 
-  // const connection = new signalR.HubConnectionBuilder()
-  //   .withUrl("http://localhost:5197/Hubs/Booking")
-  //   .build();
+  const [now, setNow] = useState(() => Date.now());
 
-  // connection.on("BookingsChanged", () => {
-  //   console.log("Hallo from connection!");
-  // });
-  const now = new Date().getTime();
-
-  console.log("now: " + now);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const passedBookings = useMemo(
-    () => bookings.filter((b) => Date.parse(b.endTime) < now),
+    () => bookings.filter((b) => Date.parse(b.endTime) <= now)
+      .sort((a, b) => Date.parse(b.endTime) - Date.parse(a.endTime)),
     [bookings, now],
   );
   const activeBookings = useMemo(
-    () => bookings.filter((b) => Date.parse(b.endTime) >= now),
+    () => bookings.filter((b) => Date.parse(b.endTime) > now)
+      .sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime)),
     [bookings, now],
   );
 
@@ -144,34 +142,19 @@ export default function AdminBookings() {
   const deleteBooking = async (id: number) => {
     const token = sessionStorage.getItem("token");
 
-    await fetch(`${API_URL}/api/Bookings/${id}`, {
+    const response = await fetch(`${API_URL}/api/Bookings/${id}`, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${token}`,
       },
-    }).then((response) => {
-      if (response.status === 200) {
-        setBookings(
-          bookings.filter((booking) => {
-            return booking.bookingId! == id;
-          }),
-        );
-      } else {
-        return;
-      }
     });
+    if (response.ok) {
+      setBookings((current) => current.filter((booking) => booking.bookingId !== id));
+    }
   };
 
-  // const visibleBookings = showAll && !showPassed ? bookings : bookings.slice(0, 5);
-  function visibleBookings() {
-    return showAll && !showPassed
-      ? activeBookings
-      : showAll && showPassed
-        ? passedBookings
-        : !showAll && showPassed
-          ? passedBookings.slice(0, 5)
-          : activeBookings.slice(0, 5);
-  }
+  const selectedBookings = showPassed ? passedBookings : activeBookings;
+  const visibleBookings = showAll ? selectedBookings : selectedBookings.slice(0, 5);
 
   return (
     <section id="bookings" className={styles.bookingsWrapper}>
@@ -180,17 +163,16 @@ export default function AdminBookings() {
           <p className={styles.eyebrow}>Bokningar</p>
 
           <div className={styles.buttonGroup}>
-            <button type="button" onClick={() => setShowPassed(!showPassed)}>
+            <button type="button" aria-pressed={showPassed} onClick={() => {
+              setNow(Date.now());
+              setShowPassed((current) => !current);
+              setShowAll(false);
+            }}>
               {showPassed
-                ? "Visa aktuella bokningar ↑"
-                : "Visa gamla bokningar →"}
+                ? "Visa aktuella bokningar"
+                : "Visa gamla bokningar"}
             </button>
 
-            {bookings.length > 5 && (
-              <button type="button" onClick={() => setShowAll(!showAll)}>
-                {showAll ? "Visa färre bokningar ↑" : "Visa alla bokningar →"}
-              </button>
-            )}
           </div>
         </div>
 
@@ -214,15 +196,15 @@ export default function AdminBookings() {
         </div>
       )}
 
-      {!loading && !error && bookings.length === 0 && (
+      {!loading && !error && selectedBookings.length === 0 && (
         <div className={styles.placeholder}>
-          <p>Inga bokningar ännu</p>
+          <p>{showPassed ? "Inga gamla bokningar" : "Inga aktuella bokningar"}</p>
         </div>
       )}
 
-      {!loading && !error && bookings.length > 0 && (
-        <div className={styles.bookingList}>
-          {visibleBookings().map((booking) => (
+      {!loading && !error && selectedBookings.length > 0 && (
+        <div id="admin-booking-list" className={styles.bookingList}>
+          {visibleBookings.map((booking) => (
             <div key={booking.bookingId} className={styles.bookingRow}>
               <div className={styles.resource}>{booking.resourceType}</div>
 
@@ -244,6 +226,14 @@ export default function AdminBookings() {
             </div>
           ))}
         </div>
+      )}
+      {!loading && !error && selectedBookings.length > 5 && (
+        <button type="button" className={styles.expandButton}
+          aria-expanded={showAll} aria-controls="admin-booking-list"
+          aria-label={showAll ? "Visa färre bokningar" : "Visa alla bokningar"}
+          onClick={() => setShowAll((current) => !current)}>
+          <span aria-hidden="true" className={`${styles.chevron} ${showAll ? styles.chevronUp : ""}`} />
+        </button>
       )}
     </section>
   );

@@ -72,6 +72,11 @@ namespace api.Controllers
                 return Forbid();
             }
 
+            if (booking.EndTime <= DateTime.UtcNow && !User.IsInRole("Admin"))
+            {
+                return Forbid();
+            }
+
             return Ok(booking.ToBookingDto());
         }
 

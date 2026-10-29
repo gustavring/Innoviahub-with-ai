@@ -79,7 +79,11 @@ namespace api.Controllers
 
             var bookings = await _bookingRepository.GetByResourceIdAsync(resourceId);
 
-            return Ok(bookings);
+            var visibleBookings = User.IsInRole("Admin")
+                ? bookings
+                : bookings.Where(b => b.EndTime > DateTime.UtcNow);
+
+            return Ok(visibleBookings);
         }
 
         [HttpGet("{id:int}/availability")]

@@ -19,6 +19,12 @@ export default function Bookings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showAll, setShowAll] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     async function getBookings() {
@@ -108,7 +114,9 @@ export default function Bookings() {
     }
   };
 
-  const visibleBookings = showAll ? bookings : bookings.slice(0, 5);
+  const activeBookings = bookings.filter((booking) => Date.parse(booking.endTime) > now)
+    .sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime));
+  const visibleBookings = showAll ? activeBookings : activeBookings.slice(0, 5);
 
   return (
     <section id="bookings" className={styles.bookingsWrapper}>
@@ -116,11 +124,6 @@ export default function Bookings() {
         <div className={styles.headerAndButton}>
           <p className={styles.eyebrow}>Bokningar</p>
 
-          {bookings.length > 5 && (
-            <button type="button" onClick={() => setShowAll(!showAll)}>
-              {showAll ? "Visa färre bokningar ↑" : "Visa alla bokningar →"}
-            </button>
-          )}
         </div>
 
         <div className={styles.info}>
@@ -144,14 +147,14 @@ export default function Bookings() {
         </div>
       )}
 
-      {!loading && !error && bookings.length === 0 && (
+      {!loading && !error && activeBookings.length === 0 && (
         <div className={styles.placeholder}>
-          <p>Inga bokningar ännu</p>
+          <p>Inga aktuella bokningar</p>
         </div>
       )}
 
-      {!loading && !error && bookings.length > 0 && (
-        <div className={styles.bookingList}>
+      {!loading && !error && activeBookings.length > 0 && (
+        <div id="user-booking-list" className={styles.bookingList}>
           {visibleBookings.map((booking) => (
             <div key={booking.bookingId} className={styles.bookingRow}>
               <div className={styles.resource}>{booking.resourceName}</div>
@@ -175,6 +178,14 @@ export default function Bookings() {
             </div>
           ))}
         </div>
+      )}
+      {!loading && !error && activeBookings.length > 5 && (
+        <button type="button" className={styles.expandButton}
+          aria-expanded={showAll} aria-controls="user-booking-list"
+          aria-label={showAll ? "Visa färre bokningar" : "Visa alla bokningar"}
+          onClick={() => setShowAll((current) => !current)}>
+          <span aria-hidden="true" className={`${styles.chevron} ${showAll ? styles.chevronUp : ""}`} />
+        </button>
       )}
     </section>
   );
