@@ -79,6 +79,8 @@ export default function TimeSlots({
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function fetchResources() {
       if (selectedResourceType === null) {
         setResources([]);
@@ -88,6 +90,7 @@ export default function TimeSlots({
       try {
         const response = await fetch(
           `${API_URL}/api/Resources/types/${selectedResourceType}`,
+          { signal: controller.signal },
         );
 
         if (!response.ok) {
@@ -95,16 +98,21 @@ export default function TimeSlots({
         }
 
         const data: Resource[] = await response.json();
+        if (controller.signal.aborted) return;
         setResources(data);
       } catch (error) {
+        if (controller.signal.aborted) return;
         console.error("Kunde inte hämta resurs-ID:n:", error);
       }
     }
 
     fetchResources();
+    return () => controller.abort();
   }, [selectedResourceType]);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function fetchMyBookings() {
       const token = sessionStorage.getItem("token");
 
@@ -115,6 +123,7 @@ export default function TimeSlots({
 
       try {
         const response = await fetch(`${API_URL}/api/Bookings/mine`, {
+          signal: controller.signal,
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -125,25 +134,35 @@ export default function TimeSlots({
         }
 
         const data: Booking[] = await response.json();
+        if (controller.signal.aborted) return;
         setMyBookings(data);
       } catch (error) {
+        if (controller.signal.aborted) return;
         console.error("Kunde inte hämta mina bokningar:", error);
       }
     }
 
     fetchMyBookings();
+    return () => controller.abort();
   }, [refreshKey]);
 
   useEffect(() => {
+    setSelectedStart(null);
+
+    if (!overview) {
+      onSlotSelect(null);
+    }
+  }, [selectedDate, selectedResourceId, selectedResourceType, overview, onSlotSelect]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
     async function checkAvailability() {
+      setError("");
+
       if (!selectedDate) {
         setSlots([]);
-        setSelectedStart(null);
-
-        if (!overview) {
-          onSlotSelect(null);
-        }
-
+        setLoading(false);
         return;
       }
 
@@ -152,17 +171,13 @@ export default function TimeSlots({
           setSlots(createSlots(selectedDate));
         } else {
           setSlots([]);
-          setSelectedStart(null);
-          onSlotSelect(null);
         }
 
+        setLoading(false);
         return;
       }
 
       setLoading(true);
-      setError("");
-      setSelectedStart(null);
-      onSlotSelect(null);
 
       try {
         const newSlots = createSlots(selectedDate);
@@ -209,11 +224,13 @@ export default function TimeSlots({
               /* användaren har valt ett specifikt ID */
               response = await fetch(
                 `${API_URL}/api/Resources/${selectedResourceId}/availability?${params.toString()}`,
+                { signal: controller.signal },
               );
             } else {
               /* första lediga -> kontrollera hela resurstypen */
               response = await fetch(
                 `${API_URL}/api/Resources/types/${selectedResourceType}/availability?${params.toString()}`,
+                { signal: controller.signal },
               );
             }
 
@@ -266,22 +283,27 @@ export default function TimeSlots({
           }),
         );
 
+        if (controller.signal.aborted) return;
         setSlots(availabilityResults);
       } catch (error) {
+        if (controller.signal.aborted) return;
         console.error("Fel vid kontroll av tillgänglighet:", error);
         setError("Kunde inte hämta lediga tider.");
         setSlots([]);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     }
 
     checkAvailability();
+    return () => controller.abort();
   }, [
     selectedDate,
     selectedResourceId,
     selectedResourceType,
-    onSlotSelect,
+    overview,
     refreshKey,
     myBookings,
   ]);
